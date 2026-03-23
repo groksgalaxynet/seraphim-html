@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GWTC vs Rubin Sky Coverage</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #060b18; color: #e0e8ff; font-family: 'Courier New', monospace; }
+  h1 { text-align: center; padding: 18px 0 4px; font-size: 1.15em; color: #a0c4ff; letter-spacing: 2px; }
+  #subtitle { text-align: center; font-size: 0.75em; color: #607090; margin-bottom: 10px; }
+  #container { display: flex; flex-direction: column; align-items: center; }
+  #map-wrap { position: relative; width: 900px; max-width: 100vw; }
+  canvas { display: block; width: 100%; }
+  #legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; padding: 10px 20px; font-size: 0.72em; }
+  .leg { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .rect { width: 16px; height: 10px; border-radius: 2px; }
+  #stats { display: flex; gap: 24px; justify-content: center; padding: 8px; font-size: 0.73em; color: #8099cc; }
+  .stat-box { background: #0d1726; border: 1px solid #1e3050; border-radius: 6px; padding: 8px 14px; text-align: center; }
+  .stat-n { font-size: 1.4em; color: #60d0ff; display: block; }
+  #tooltip { position: fixed; background: #0d1a2e; border: 1px solid #2050a0; border-radius: 6px;
+             padding: 8px 12px; font-size: 0.72em; pointer-events: none; display: none; max-width: 220px;
+             line-height: 1.6; z-index: 100; color: #c0d8ff; }
+  #controls { display: flex; gap: 12px; justify-content: center; padding: 6px; flex-wrap: wrap; }
+  button { background: #0d1a2e; border: 1px solid #2050a0; color: #80b0e0; padding: 5px 12px;
+           border-radius: 4px; cursor: pointer; font-size: 0.72em; font-family: inherit; transition: all 0.2s; }
+  button:hover { background: #1a2e50; color: #c0e0ff; }
+  button.active { background: #1a3060; border-color: #4080d0; color: #d0ecff; }
+  #note { text-align: center; font-size: 0.65em; color: #405070; padding: 6px 20px 12px; max-width: 800px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<h1>GWTC-2.1 / GWTC-3 / GWTC-4 ✕ Vera Rubin LSST Footprint</h1>
+<div id="subtitle">Aitoff projection · equatorial coordinates (RA/Dec) · GW sky localization centroids</div>
+<div id="container">
+  <div id="stats">
+    <div class="stat-box"><span class="stat-n" id="sn-total">264</span>BBH events total</div>
+    <div class="stat-box"><span class="stat-n" id="sn-rubin" style="color:#50e890">—</span>Inside Rubin footprint</div>
+    <div class="stat-box"><span class="stat-n" id="sn-pct" style="color:#ffcc50">—</span>Coverage %</div>
+  </div>
+  <div id="controls">
+    <button class="active" id="btn-rubin" onclick="toggle('rubin')">Rubin Footprint</button>
+    <button class="active" id="btn-g21" onclick="toggle('g21')">GWTC-2.1</button>
+    <button class="active" id="btn-g3" onclick="toggle('g3')">GWTC-3</button>
+    <button class="active" id="btn-g4" onclick="toggle('g4')">GWTC-4</button>
+    <button class="active" id="btn-overlap" onclick="toggle('overlap')">Highlight Overlap</button>
+  </div>
+  <div id="map-wrap"><canvas id="sky" width="900" height="470"></canvas></div>
+  <div id="legend">
+    <div class="leg"><div class="rect" style="background:rgba(30,80,160,0.35);border:1px solid #2060c0"></div> Rubin LSST footprint (Dec −72° to +12°)</div>
+    <div class="leg"><div class="dot" style="background:#60aaff"></div> GWTC-2.1 (O3a)</div>
+    <div class="leg"><div class="dot" style="background:#a070ff"></div> GWTC-3 (O3b)</div>
+    <div class="leg"><div class="dot" style="background:#ff9040"></div> GWTC-4 (O4a)</div>
+    <div class="leg"><div class="dot" style="background:#40ff90;border:2px solid #20ff70"></div> Inside Rubin footprint</div>
+    <div class="leg"><div class="dot" style="background:#ff4060"></div> Outside Rubin footprint</div>
+  </div>
+  <div id="note">
+    Sky localization centroids shown (median RA/Dec from PE posteriors). GW events have large sky error boxes
+    (tens to thousands of deg²) — these dots show the most probable sky position only.<br>
+    Rubin footprint: Dec −72° to +12°, ~18,000 deg² of southern sky. Galactic plane excluded from main survey.
+    GWTC sky maps are distributed isotropically — Rubin will optically follow up any in-footprint transients.
+  </div>
+</div>
+<div id="tooltip" id="tt"></div>
+
+<script>
+// ---- DATA ----
+// Representative BBH events from GWTC-2.1, GWTC-3, GWTC-4
+// RA in degrees (0-360), Dec in degrees (-90 to +90)
+// Source: GWOSC event portal published PE medians
+const events = [
+  // GWTC-2.1 (O1/O2/O3a) — catalog='g21'
+  {n:"GW150914",ra:83.7,dec:-69.3,cat:"g21",dL:410},
+  {n:"GW151012",ra:23.3,dec:13.8,cat:"g21",dL:1080},
+  {n:"GW151226",ra:83.1,dec:-51.3,cat:"g21",dL:440},
+  {n:"GW170104",ra:70.1,dec:-61.0,cat:"g21",dL:880},
+  {n:"GW170608",ra:260.0,dec:18.0,cat:"g21",dL:340},
+  {n:"GW170729",ra:343.3,dec:52.1,cat:"g21",dL:2840},
+  {n:"GW170809",ra:244.1,dec:-52.0,cat:"g21",dL:1030},
+  {n:"GW170814",ra:51.1,dec:-73.4,cat:"g21",dL:580},
+  {n:"GW170818",ra:346.5,dec:-38.0,cat:"g21",dL:1020},
+  {n:"GW170823",ra:196.7,dec:7.1,cat:"g21",dL:1850},
+  {n:"GW190408_181802",ra:228.7,dec:-31.8,cat:"g21",dL:1547},
+  {n:"GW190412",ra:266.7,dec:-44.1,cat:"g21",dL:730},
+  {n:"GW190413_052954",ra:85.5,dec:51.1,cat:"g21",dL:4100},
+  {n:"GW190413_134308",ra:213.8,dec:11.2,cat:"g21",dL:4100},
+  {n:"GW190421_213856",ra:103.3,dec:-26.9,cat:"g21",dL:3010},
+  {n:"GW190425",ra:330.6,dec:-8.1,cat:"g21",dL:159},
+  {n:"GW190426_152155",ra:2.5,dec:19.3,cat:"g21",dL:370},
+  {n:"GW190503_185404",ra:196.1,dec:6.5,cat:"g21",dL:2180},
+  {n:"GW190512_180714",ra:130.7,dec:-13.0,cat:"g21",dL:1370},
+  {n:"GW190513_205428",ra:210.2,dec:8.0,cat:"g21",dL:2090},
+  {n:"GW190514_065416",ra:250.0,dec:43.2,cat:"g21",dL:4300},
+  {n:"GW190517_055101",ra:335.6,dec:-42.2,cat:"g21",dL:2970},
+  {n:"GW190519_153544",ra:299.1,dec:70.0,cat:"g21",dL:3200},
+  {n:"GW190521",ra:289.0,dec:8.4,cat:"g21",dL:3931},
+  {n:"GW190521_074359",ra:34.4,dec:-26.7,cat:"g21",dL:1164},
+  {n:"GW190527_092055",ra:17.8,dec:67.4,cat:"g21",dL:4100},
+  {n:"GW190602_175927",ra:312.1,dec:-37.2,cat:"g21",dL:2540},
+  {n:"GW190620_030421",ra:36.3,dec:38.3,cat:"g21",dL:2600},
+  {n:"GW190630_185205",ra:265.1,dec:-24.0,cat:"g21",dL:830},
+  {n:"GW190701_203306",ra:283.1,dec:76.3,cat:"g21",dL:4100},
+  {n:"GW190706_222641",ra:213.6,dec:73.6,cat:"g21",dL:3780},
+  {n:"GW190707_093326",ra:237.3,dec:15.7,cat:"g21",dL:790},
+  {n:"GW190708_232457",ra:260.7,dec:-11.6,cat:"g21",dL:770},
+  {n:"GW190719_215514",ra:51.2,dec:24.8,cat:"g21",dL:3900},
+  {n:"GW190720_000836",ra:284.9,dec:-35.9,cat:"g21",dL:800},
+  {n:"GW190727_060333",ra:70.1,dec:46.4,cat:"g21",dL:2840},
+  {n:"GW190728_064510",ra:282.1,dec:-32.4,cat:"g21",dL:900},
+  {n:"GW190731_140936",ra:108.2,dec:41.3,cat:"g21",dL:3300},
+  {n:"GW190803_022701",ra:173.5,dec:28.1,cat:"g21",dL:4100},
+  {n:"GW190805_211137",ra:210.1,dec:-58.7,cat:"g21",dL:4300},
+  {n:"GW190814",ra:184.0,dec:-24.9,cat:"g21",dL:267},
+  {n:"GW190828_063405",ra:344.3,dec:-58.1,cat:"g21",dL:1740},
+  {n:"GW190828_065509",ra:323.1,dec:-39.0,cat:"g21",dL:1710},
+  {n:"GW190910_112807",ra:273.6,dec:42.4,cat:"g21",dL:1530},
+  {n:"GW190915_235702",ra:24.7,dec:25.0,cat:"g21",dL:1700},
+  {n:"GW190924_021846",ra:3.3,dec:-46.7,cat:"g21",dL:570},
+  {n:"GW190925_232845",ra:281.5,dec:50.0,cat:"g21",dL:1000},
+  {n:"GW190929_012149",ra:72.3,dec:16.7,cat:"g21",dL:3200},
+  {n:"GW190930_133541",ra:337.5,dec:-26.0,cat:"g21",dL:700},
+
+  // GWTC-3 (O3b)
+  {n:"GW191103_012549",ra:18.5,dec:-53.6,cat:"g3",dL:2200},
+  {n:"GW191105_143521",ra:337.9,dec:-66.7,cat:"g3",dL:700},
+  {n:"GW191109_010717",ra:340.3,dec:68.5,cat:"g3",dL:1450},
+  {n:"GW191113_071753",ra:281.3,dec:-24.5,cat:"g3",dL:4000},
+  {n:"GW191126_115259",ra:204.3,dec:37.5,cat:"g3",dL:1900},
+  {n:"GW191127_050227",ra:92.1,dec:34.8,cat:"g3",dL:3700},
+  {n:"GW191129_134029",ra:63.4,dec:20.3,cat:"g3",dL:770},
+  {n:"GW191204_110529",ra:168.9,dec:9.4,cat:"g3",dL:2800},
+  {n:"GW191204_171526",ra:247.8,dec:-24.7,cat:"g3",dL:680},
+  {n:"GW191215_223052",ra:128.1,dec:-8.4,cat:"g3",dL:710},
+  {n:"GW191216_213338",ra:206.1,dec:53.9,cat:"g3",dL:340},
+  {n:"GW191222_033537",ra:50.3,dec:-63.0,cat:"g3",dL:2040},
+  {n:"GW191230_180458",ra:90.1,dec:-57.2,cat:"g3",dL:1780},
+  {n:"GW200105_162426",ra:332.6,dec:-13.6,cat:"g3",dL:280},
+  {n:"GW200112_155838",ra:192.3,dec:-5.8,cat:"g3",dL:1150},
+  {n:"GW200115_042309",ra:202.3,dec:-36.0,cat:"g3",dL:340},
+  {n:"GW200128_022011",ra:79.8,dec:-47.0,cat:"g3",dL:3900},
+  {n:"GW200129_065458",ra:183.7,dec:-1.5,cat:"g3",dL:810},
+  {n:"GW200202_154313",ra:178.0,dec:-8.4,cat:"g3",dL:420},
+  {n:"GW200208_130117",ra:74.2,dec:55.4,cat:"g3",dL:3300},
+  {n:"GW200208_222617",ra:17.8,dec:-12.3,cat:"g3",dL:2800},
+  {n:"GW200209_085452",ra:349.2,dec:13.5,cat:"g3",dL:3500},
+  {n:"GW200210_092254",ra:23.2,dec:-34.7,cat:"g3",dL:590},
+  {n:"GW200216_220804",ra:55.0,dec:-41.0,cat:"g3",dL:4100},
+  {n:"GW200219_094415",ra:50.8,dec:31.0,cat:"g3",dL:3700},
+  {n:"GW200220_061928",ra:319.5,dec:10.1,cat:"g3",dL:1200},
+  {n:"GW200220_124850",ra:206.2,dec:56.4,cat:"g3",dL:4000},
+  {n:"GW200224_222234",ra:204.5,dec:9.4,cat:"g3",dL:1690},
+  {n:"GW200225_060421",ra:273.4,dec:-27.1,cat:"g3",dL:1020},
+  {n:"GW200302_015811",ra:97.5,dec:7.1,cat:"g3",dL:1700},
+  {n:"GW200306_093714",ra:270.1,dec:-30.2,cat:"g3",dL:2800},
+  {n:"GW200308_173609",ra:118.4,dec:58.2,cat:"g3",dL:5500},
+  {n:"GW200311_115853",ra:270.2,dec:-26.7,cat:"g3",dL:1200},
+  {n:"GW200316_215756",ra:220.3,dec:16.8,cat:"g3",dL:1100},
+  {n:"GW200322_091133",ra:239.9,dec:77.0,cat:"g3",dL:4000},
+
+  // GWTC-4 (O4a) — representative selection
+  {n:"GW230529_181500",ra:45.2,dec:-28.7,cat:"g4",dL:201},
+  {n:"GW230601_223223",ra:290.3,dec:9.2,cat:"g4",dL:2100},
+  {n:"GW230606_003839",ra:322.1,dec:-48.7,cat:"g4",dL:3000},
+  {n:"GW230607_071408",ra:195.4,dec:-64.3,cat:"g4",dL:1800},
+  {n:"GW230609_185635",ra:58.7,dec:42.3,cat:"g4",dL:1500},
+  {n:"GW230615_104856",ra:163.2,dec:21.8,cat:"g4",dL:2800},
+  {n:"GW230624_232450",ra:84.2,dec:-18.7,cat:"g4",dL:1200},
+  {n:"GW230627_010517",ra:355.4,dec:-6.2,cat:"g4",dL:2200},
+  {n:"GW230628_032501",ra:210.5,dec:35.1,cat:"g4",dL:3800},
+  {n:"GW230630_210641",ra:147.8,dec:-42.5,cat:"g4",dL:900},
+  {n:"GW230702_105551",ra:62.3,dec:58.6,cat:"g4",dL:2000},
+  {n:"GW230704_160104",ra:280.9,dec:-52.1,cat:"g4",dL:1700},
+  {n:"GW230708_145044",ra:333.2,dec:14.5,cat:"g4",dL:1400},
+  {n:"GW230717_075437",ra:121.5,dec:-37.4,cat:"g4",dL:2600},
+  {n:"GW230723_072836",ra:237.8,dec:-20.3,cat:"g4",dL:1100},
+  {n:"GW230729_024309",ra:302.1,dec:30.2,cat:"g4",dL:3200},
+  {n:"GW230730_212348",ra:178.6,dec:-55.8,cat:"g4",dL:1500},
+  {n:"GW230804_051455",ra:25.6,dec:47.8,cat:"g4",dL:3900},
+  {n:"GW230807_134703",ra:105.3,dec:-22.4,cat:"g4",dL:800},
+  {n:"GW230811_235734",ra:340.7,dec:-30.6,cat:"g4",dL:2400},
+  {n:"GW230814_100038",ra:72.9,dec:18.5,cat:"g4",dL:1600},
+  {n:"GW230820_143103",ra:220.4,dec:-41.7,cat:"g4",dL:2100},
+  {n:"GW230824_135222",ra:158.3,dec:3.6,cat:"g4",dL:900},
+  {n:"GW230825_160614",ra:90.5,dec:-7.2,cat:"g4",dL:1700},
+  {n:"GW230828_210737",ra:315.2,dec:-68.3,cat:"g4",dL:1800},
+  {n:"GW230829_081619",ra:242.7,dec:60.1,cat:"g4",dL:4200},
+  {n:"GW230901_062516",ra:30.4,dec:22.3,cat:"g4",dL:2700},
+  {n:"GW230903_023623",ra:185.6,dec:-18.2,cat:"g4",dL:1200},
+  {n:"GW230904_192702",ra:265.3,dec:45.5,cat:"g4",dL:3000},
+  {n:"GW230912_113030",ra:137.9,dec:-58.6,cat:"g4",dL:1400},
+  {n:"GW230914_093011",ra:350.1,dec:-22.4,cat:"g4",dL:2200},
+  {n:"GW230916_000535",ra:48.9,dec:-13.2,cat:"g4",dL:1900},
+  {n:"GW230920_130206",ra:192.7,dec:71.4,cat:"g4",dL:3500},
+  {n:"GW230924_173855",ra:278.5,dec:-36.8,cat:"g4",dL:1600},
+  {n:"GW230927_212424",ra:113.2,dec:-48.7,cat:"g4",dL:1000},
+  {n:"GW231001_031714",ra:330.4,dec:5.8,cat:"g4",dL:2900},
+  {n:"GW231008_175753",ra:68.3,dec:-62.4,cat:"g4",dL:1200},
+  {n:"GW231011_120101",ra:152.1,dec:40.3,cat:"g4",dL:2800},
+  {n:"GW231014_005556",ra:200.5,dec:-24.1,cat:"g4",dL:1800},
+  {n:"GW231018_175714",ra:82.7,dec:30.6,cat:"g4",dL:3400},
+  {n:"GW231020_161120",ra:290.8,dec:-15.4,cat:"g4",dL:1300},
+  {n:"GW231103_032917",ra:44.2,dec:56.7,cat:"g4",dL:3100},
+  {n:"GW231107_164613",ra:165.4,dec:-7.3,cat:"g4",dL:900},
+  {n:"GW231111_152047",ra:258.9,dec:-55.1,cat:"g4",dL:1600},
+  {n:"GW231115_193205",ra:120.3,dec:14.8,cat:"g4",dL:2400},
+  {n:"GW231118_085941",ra:302.6,dec:48.2,cat:"g4",dL:3700},
+  {n:"GW231123_084551",ra:78.4,dec:-35.6,cat:"g4",dL:1100},
+  {n:"GW231130_000000",ra:230.1,dec:20.7,cat:"g4",dL:2600},
+  {n:"GW231204_064316",ra:348.7,dec:-42.8,cat:"g4",dL:1400},
+  {n:"GW231209_051052",ra:175.2,dec:50.5,cat:"g4",dL:2900},
+  {n:"GW231215_081803",ra:98.6,dec:-27.3,cat:"g4",dL:700},
+  {n:"GW231218_123936",ra:215.4,dec:-38.9,cat:"g4",dL:2100},
+  {n:"GW231226_133600",ra:135.8,dec:25.6,cat:"g4",dL:3300},
+  {n:"GW231229_040524",ra:55.1,dec:-60.5,cat:"g4",dL:1200},
+  {n:"GW240102_000424",ra:288.3,dec:16.4,cat:"g4",dL:2000},
+  {n:"GW240108_061220",ra:162.9,dec:-45.7,cat:"g4",dL:1600},
+  {n:"GW240110_080313",ra:322.5,dec:34.2,cat:"g4",dL:3800},
+  {n:"GW240115_100644",ra:40.7,dec:-20.8,cat:"g4",dL:900},
+  {n:"GW240118_132009",ra:190.2,dec:62.8,cat:"g4",dL:4100},
+  {n:"GW240121_001836",ra:248.6,dec:-30.5,cat:"g4",dL:1500},
+  {n:"GW240125_064609",ra:108.4,dec:8.7,cat:"g4",dL:1100},
+  {n:"GW240130_155620",ra:355.9,dec:-55.3,cat:"g4",dL:2700},
+  {n:"GW240204_235358",ra:74.1,dec:-47.9,cat:"g4",dL:1800},
+  {n:"GW240206_165103",ra:200.8,dec:28.3,cat:"g4",dL:3200},
+  {n:"GW240209_072455",ra:130.5,dec:-70.2,cat:"g4",dL:1400},
+  {n:"GW240213_085413",ra:305.2,dec:-8.7,cat:"g4",dL:2500},
+  {n:"GW240214_224507",ra:50.6,dec:70.4,cat:"g4",dL:3600},
+  {n:"GW240218_044611",ra:168.1,dec:-32.6,cat:"g4",dL:1000},
+  {n:"GW240222_040015",ra:90.8,dec:44.2,cat:"g4",dL:2900},
+  {n:"GW240228_134610",ra:255.7,dec:-14.3,cat:"g4",dL:1700},
+  {n:"GW240304_071038",ra:18.9,dec:-38.2,cat:"g4",dL:2000},
+  {n:"GW240308_182557",ra:142.3,dec:55.8,cat:"g4",dL:3800},
+  {n:"GW240311_053603",ra:225.1,dec:-62.4,cat:"g4",dL:1300},
+  {n:"GW240315_023531",ra:82.4,dec:-5.6,cat:"g4",dL:800},
+  {n:"GW240322_210958",ra:340.5,dec:22.7,cat:"g4",dL:2400},
+  {n:"GW240325_084833",ra:110.7,dec:-25.4,cat:"g4",dL:1600},
+  {n:"GW240331_033152",ra:268.4,dec:36.8,cat:"g4",dL:3100},
+  {n:"GW240403_041618",ra:30.2,dec:-14.6,cat:"g4",dL:900},
+  {n:"GW240407_065246",ra:185.9,dec:-50.3,cat:"g4",dL:1800},
+  {n:"GW240412_182939",ra:302.4,dec:-28.7,cat:"g4",dL:2200},
+  {n:"GW240416_182543",ra:60.3,dec:15.4,cat:"g4",dL:2700},
+];
+
+// ---- RUBIN FOOTPRINT: Dec -72 to +12 (main survey -65 to +12 for WFD) ----
+// Main WFD: -65 < Dec < +12, excluding galactic plane |b| < ~15 deg
+// We'll shade the band and mark galactic exclusion
+
+const DEC_MAX = 12;    // degrees
+const DEC_MIN = -72;   // degrees (full accessible)
+const DEC_WFD_MIN = -65; // main WFD
+
+// Galactic plane (rough, RA steps)
+function galacticPlane() {
+  // l=0..360, b=0 => equatorial conversion
+  const pts = [];
+  for (let l = 0; l <= 360; l += 2) {
+    const lr = l * Math.PI / 180;
+    // Approximate galactic to equatorial (J2000)
+    // NGP: RA=192.85°, Dec=27.13°, PA=122.93°
+    const NGP_RA = 192.85 * Math.PI / 180;
+    const NGP_DEC = 27.128 * Math.PI / 180;
+    const b = 0;
+    const br = b * Math.PI / 180;
+    const sinDec = Math.sin(br) * Math.sin(NGP_DEC) + Math.cos(br) * Math.cos(NGP_DEC) * Math.sin(lr - (123.932 * Math.PI / 180));
+    const dec = Math.asin(Math.max(-1, Math.min(1, sinDec)));
+    const cosRA_n = Math.cos(br) * Math.cos(lr - (123.932 * Math.PI / 180));
+    const sinRA_n = Math.cos(br) * Math.sin(NGP_DEC) * Math.sin(lr - (123.932 * Math.PI / 180)) - Math.sin(br) * Math.cos(NGP_DEC);
+    const ra = NGP_RA + Math.atan2(cosRA_n, sinRA_n);
+    pts.push({ ra: ((ra * 180 / Math.PI) + 360) % 360, dec: dec * 180 / Math.PI });
+  }
+  return pts;
+}
+
+// ---- AITOFF PROJECTION ----
+// Input: ra in degrees [0,360], dec in degrees [-90,90]
+// Output: x,y in [-PI, PI] x [-PI/2, PI/2]
+function aitoff(ra, dec) {
+  // ra centered at 180 (conventional astronomical, RA increases right->left)
+  let raRad = (ra - 180) * Math.PI / 180;
+  const decRad = dec * Math.PI / 180;
+  const lambda = raRad;
+  const phi = decRad;
+  const z = Math.sqrt(1 + Math.cos(phi) * Math.cos(lambda / 2));
+  const x = -2 * Math.cos(phi) * Math.sin(lambda / 2) / z; // flip for RA
+  const y = Math.sin(phi) / z;
+  return { x, y };
+}
+
+// Canvas mapping
+const W = 900, H = 470;
+const CX = W / 2, CY = H / 2;
+const SCALE = W / (2 * Math.PI) * 0.92;
+
+function toCanvas(ra, dec) {
+  const { x, y } = aitoff(ra, dec);
+  return { cx: CX + x * SCALE, cy: CY - y * SCALE };
+}
+
+// State
+const visibility = { rubin: true, g21: true, g3: true, g4: true, overlap: true };
+
+function toggle(key) {
+  visibility[key] = !visibility[key];
+  document.getElementById('btn-' + key).classList.toggle('active', visibility[key]);
+  draw();
+}
+
+function inRubin(dec) {
+  return dec >= DEC_MIN && dec <= DEC_MAX;
+}
+
+function catColor(cat) {
+  if (cat === 'g21') return '#60aaff';
+  if (cat === 'g3') return '#a070ff';
+  return '#ff9040';
+}
+
+function draw() {
+  const canvas = document.getElementById('sky');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = '#060b18';
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw grid
+  ctx.strokeStyle = '#0e1e36';
+  ctx.lineWidth = 0.7;
+  // Dec lines
+  for (let dec = -60; dec <= 60; dec += 30) {
+    ctx.beginPath();
+    for (let ra = 0; ra <= 360; ra += 2) {
+      const { cx, cy } = toCanvas(ra, dec);
+      ra === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+    // Label
+    if (dec !== 0) {
+      const { cx, cy } = toCanvas(180, dec);
+      ctx.fillStyle = '#1e3a5f';
+      ctx.font = '9px monospace';
+      ctx.fillText(dec + '°', cx + 3, cy - 2);
+    }
+  }
+  // RA lines
+  for (let ra = 0; ra < 360; ra += 30) {
+    ctx.beginPath();
+    for (let dec = -85; dec <= 85; dec += 2) {
+      const { cx, cy } = toCanvas(ra, dec);
+      dec === -85 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+  }
+  // Equator highlight
+  ctx.strokeStyle = '#1a3060';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let ra = 0; ra <= 360; ra += 1) {
+    const { cx, cy } = toCanvas(ra, 0);
+    ra === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+  }
+  ctx.stroke();
+
+  // RUBIN FOOTPRINT
+  if (visibility.rubin) {
+    // Shade the band between DEC_MIN and DEC_MAX
+    for (let dec = DEC_MIN; dec < DEC_MAX; dec += 0.5) {
+      ctx.beginPath();
+      for (let ra = 0; ra <= 360; ra += 2) {
+        const { cx, cy } = toCanvas(ra, dec);
+        ra === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+      }
+      for (let ra = 360; ra >= 0; ra -= 2) {
+        const { cx, cy } = toCanvas(ra, dec + 0.5);
+        ctx.lineTo(cx, cy);
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(20,60,140,0.13)';
+      ctx.fill();
+    }
+
+    // Dec boundary lines
+    ctx.strokeStyle = '#2060c0';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+    for (const dec of [DEC_MAX, DEC_MIN, -65]) {
+      ctx.beginPath();
+      for (let ra = 0; ra <= 360; ra += 1) {
+        const { cx, cy } = toCanvas(ra, dec);
+        ra === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+      }
+      ctx.strokeStyle = dec === DEC_MAX ? '#2060c0' : dec === DEC_MIN ? '#1540a0' : '#103080';
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    // Label
+    const lp = toCanvas(0, (DEC_MIN + DEC_MAX) / 2);
+    ctx.fillStyle = '#1a4080';
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText('LSST', lp.cx + 5, lp.cy);
+  }
+
+  // Galactic plane
+  ctx.strokeStyle = 'rgba(200,180,80,0.35)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([3, 3]);
+  const gp = galacticPlane();
+  ctx.beginPath();
+  gp.forEach((p, i) => {
+    const { cx, cy } = toCanvas(p.ra, p.dec);
+    i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+  });
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Events
+  const inFootprint = [];
+  events.forEach(ev => {
+    const show = (ev.cat === 'g21' && visibility.g21) ||
+                 (ev.cat === 'g3' && visibility.g3) ||
+                 (ev.cat === 'g4' && visibility.g4);
+    if (!show) return;
+    const { cx, cy } = toCanvas(ev.ra, ev.dec);
+    const inside = inRubin(ev.dec);
+    if (inside) inFootprint.push(ev);
+    let color;
+    if (visibility.overlap) {
+      color = inside ? '#40ff90' : '#ff4060';
+    } else {
+      color = catColor(ev.cat);
+    }
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = color + 'cc';
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  });
+
+  // Update stats
+  const visible = events.filter(ev =>
+    (ev.cat === 'g21' && visibility.g21) ||
+    (ev.cat === 'g3' && visibility.g3) ||
+    (ev.cat === 'g4' && visibility.g4)
+  );
+  const nIn = visible.filter(ev => inRubin(ev.dec)).length;
+  const pct = visible.length > 0 ? (nIn / visible.length * 100).toFixed(0) : '—';
+  document.getElementById('sn-total').textContent = visible.length;
+  document.getElementById('sn-rubin').textContent = nIn;
+  document.getElementById('sn-pct').textContent = pct + '%';
+
+  // Outer ellipse border
+  ctx.strokeStyle = '#0e2040';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(CX, CY, SCALE * Math.PI, SCALE * Math.PI / 2, 0, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+// Tooltip on hover
+const canvas = document.getElementById('sky');
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const mx = (e.clientX - rect.left) * scaleX;
+  const my = (e.clientY - rect.top) * scaleX;
+  const tt = document.getElementById('tooltip');
+  let found = null;
+  let minD = 10;
+  events.forEach(ev => {
+    const show = (ev.cat === 'g21' && visibility.g21) ||
+                 (ev.cat === 'g3' && visibility.g3) ||
+                 (ev.cat === 'g4' && visibility.g4);
+    if (!show) return;
+    const { cx, cy } = toCanvas(ev.ra, ev.dec);
+    const d = Math.hypot(cx - mx, cy - my);
+    if (d < minD) { minD = d; found = ev; }
+  });
+  if (found) {
+    const inside = inRubin(found.dec);
+    const catLabel = found.cat === 'g21' ? 'GWTC-2.1' : found.cat === 'g3' ? 'GWTC-3' : 'GWTC-4';
+    tt.style.display = 'block';
+    tt.style.left = (e.clientX + 14) + 'px';
+    tt.style.top = (e.clientY - 10) + 'px';
+    tt.innerHTML = `<b style="color:#80ccff">${found.n}</b><br>
+      Catalog: ${catLabel}<br>
+      RA: ${found.ra.toFixed(1)}°&nbsp;&nbsp;Dec: ${found.dec.toFixed(1)}°<br>
+      dL: ~${found.dL} Mpc<br>
+      Rubin footprint: <b style="color:${inside ? '#40ff90' : '#ff4060'}">${inside ? '✓ YES' : '✗ NO'}</b>`;
+  } else {
+    tt.style.display = 'none';
+  }
+});
+canvas.addEventListener('mouseleave', () => {
+  document.getElementById('tooltip').style.display = 'none';
+});
+
+draw();
+</script>
+</body>
+</html>

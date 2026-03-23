@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seraphim · GW Event Distance Map</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #04080f;
+    --bg2: #080e1a;
+    --grid: rgba(100,160,255,0.07);
+    --gwtc21: #00d4ff;
+    --gwtc3:  #ff6b35;
+    --gwtc4:  #b8ff47;
+    --text:   #c8dff8;
+    --muted:  #4a6a8a;
+    --accent: #ffffff;
+    --band-line: rgba(255,255,180,0.35);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Starfield */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 85% 5%,  rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 45% 90%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 55%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 25% 65%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 92% 38%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 15% 48%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 12%, rgba(255,255,255,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 33% 33%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 78% 78%, rgba(255,255,255,0.4) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 28px 60px;
+  }
+
+  header {
+    margin-bottom: 36px;
+  }
+
+  .eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(24px, 4vw, 42px);
+    color: var(--accent);
+    line-height: 1.1;
+    margin-bottom: 10px;
+  }
+
+  h1 span { color: var(--gwtc21); }
+
+  .subtitle {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 620px;
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex;
+    gap: 32px;
+    margin: 24px 0 32px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .stat-val {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--accent);
+  }
+  .stat-lbl {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    align-items: center;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 3px;
+    transition: background 0.2s;
+  }
+  .legend-item:hover { background: rgba(255,255,255,0.05); }
+  .legend-item.dim { opacity: 0.35; }
+  .swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Main chart container */
+  .chart-wrap {
+    position: relative;
+    background: var(--bg2);
+    border: 1px solid rgba(100,160,255,0.12);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  canvas#mainChart {
+    display: block;
+    width: 100%;
+    cursor: crosshair;
+  }
+
+  /* Tooltip */
+  #tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: rgba(4,8,15,0.95);
+    border: 1px solid rgba(100,160,255,0.25);
+    border-radius: 4px;
+    padding: 10px 13px;
+    font-size: 11px;
+    line-height: 1.8;
+    max-width: 260px;
+    display: none;
+    z-index: 100;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+  }
+  #tooltip .ev-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  #tooltip .ev-cat { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px; }
+  #tooltip .ev-row { display: flex; justify-content: space-between; gap: 16px; }
+  #tooltip .ev-row span:last-child { color: var(--accent); }
+
+  /* Bottom strip: histogram */
+  .hist-label {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 20px 0 6px;
+  }
+
+  canvas#histChart {
+    display: block;
+    width: 100%;
+    border-radius: 4px;
+    background: var(--bg2);
+    border: 1px solid rgba(100,160,255,0.08);
+  }
+
+  /* View toggle */
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .btn-group { display: flex; gap: 0; }
+  .btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid var(--muted);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.18s;
+    text-transform: uppercase;
+  }
+  .btn:first-child { border-radius: 3px 0 0 3px; }
+  .btn:last-child  { border-radius: 0 3px 3px 0; }
+  .btn.active {
+    background: rgba(0,212,255,0.12);
+    border-color: var(--gwtc21);
+    color: var(--gwtc21);
+  }
+
+  .note {
+    margin-top: 22px;
+    font-size: 9px;
+    color: var(--muted);
+    line-height: 1.8;
+    border-top: 1px solid rgba(100,160,255,0.08);
+    padding-top: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="eyebrow">Seraphim LQG Framework · v18.3 · GWOSC Posterior Data</div>
+    <h1>GW Events: <span>Distance from Earth</span></h1>
+    <p class="subtitle">
+      264 binary black hole mergers across three LIGO/Virgo/KAGRA catalogs, plotted by luminosity distance.
+      Each dot is a gravitational wave detection — signals that left their source between 200 Mpc and 17,000 Mpc away.
+    </p>
+  </header>
+
+  <div class="stats-bar" id="statsBar"></div>
+
+  <div class="controls">
+    <div class="btn-group">
+      <button class="btn active" id="btnDist" onclick="setXAxis('dist')">Distance (Mpc)</button>
+      <button class="btn" id="btnZ"    onclick="setXAxis('z')">Redshift z</button>
+    </div>
+    <div class="btn-group">
+      <button class="btn active" id="btnN"    onclick="setYAxis('n')">Octave depth n</button>
+      <button class="btn" id="btnM"    onclick="setYAxis('M')">Total mass M☉</button>
+    </div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+
+  <div class="chart-wrap">
+    <canvas id="mainChart"></canvas>
+  </div>
+
+  <p class="hist-label">Event count by luminosity distance</p>
+  <canvas id="histChart" height="80"></canvas>
+
+  <p class="note">
+    Luminosity distances from IMRPhenomXPHM posterior medians (GWOSC). GWTC-2.1 = Zenodo:6513631 · GWTC-3 = Zenodo:8177023 · GWTC-4 = Zenodo:16053484.
+    Horizontal dashed line marks predicted n = 5.314. Band shading shows ±0.15 octave window. 
+    Hover over dots for event details.
+  </p>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+const RAW = [{"event":"GW150914_095045","catalog":"GWTC-2.1","lum_dist_Mpc":455.6162,"redshift":0.0963,"n":5.340209,"M":64.264},{"event":"GW150914_095045","catalog":"GWTC-2.1","lum_dist_Mpc":463.0273,"redshift":0.0978,"n":5.340473,"M":64.2184},{"event":"GW151012_095443","catalog":"GWTC-2.1","lum_dist_Mpc":1060.028,"redshift":0.2065,"n":5.251059,"M":37.7882},{"event":"GW151226_033853","catalog":"GWTC-2.1","lum_dist_Mpc":454.1928,"redshift":0.0965,"n":5.154261,"M":21.9083},{"event":"GW170104_101158","catalog":"GWTC-2.1","lum_dist_Mpc":978.3636,"redshift":0.1919,"n":5.309636,"M":51.6831},{"event":"GW170608_020116","catalog":"GWTC-2.1","lum_dist_Mpc":341.5754,"redshift":0.0745,"n":5.179898,"M":19.3791},{"event":"GW170729_185629","catalog":"GWTC-2.1","lum_dist_Mpc":2826.9268,"redshift":0.4813,"n":5.407783,"M":84.5553},{"event":"GW170809_082821","catalog":"GWTC-2.1","lum_dist_Mpc":1030.1963,"redshift":0.2006,"n":5.332098,"M":58.7095},{"event":"GW170814_103043","catalog":"GWTC-2.1","lum_dist_Mpc":601.3264,"redshift":0.1269,"n":5.336247,"M":55.1499},{"event":"GW170818_022509","catalog":"GWTC-2.1","lum_dist_Mpc":1075.7944,"redshift":0.2093,"n":5.346474,"M":59.6793},{"event":"GW170823_131358","catalog":"GWTC-2.1","lum_dist_Mpc":1897.5234,"redshift":0.3447,"n":5.368282,"M":68.4484},{"event":"GW190408_181802","catalog":"GWTC-2.1","lum_dist_Mpc":1573.7866,"redshift":0.2936,"n":5.333393,"M":59.5427},{"event":"GW190412_053044","catalog":"GWTC-2.1","lum_dist_Mpc":766.5116,"redshift":0.1564,"n":5.082558,"M":36.1049},{"event":"GW190413_052954","catalog":"GWTC-2.1","lum_dist_Mpc":2793.9165,"redshift":0.4762,"n":5.363614,"M":73.4448},{"event":"GW190413_134308","catalog":"GWTC-2.1","lum_dist_Mpc":3131.7705,"redshift":0.5226,"n":5.353889,"M":69.2534},{"event":"GW190421_213856","catalog":"GWTC-2.1","lum_dist_Mpc":1704.7378,"redshift":0.3147,"n":5.363398,"M":74.5699},{"event":"GW190424_180648","catalog":"GWTC-2.1","lum_dist_Mpc":2760.0808,"redshift":0.4706,"n":5.388024,"M":81.5395},{"event":"GW190425_081805","catalog":"GWTC-2.1","lum_dist_Mpc":166.4629,"redshift":0.0372,"n":4.155406,"M":3.5284},{"event":"GW190426_190642","catalog":"GWTC-2.1","lum_dist_Mpc":521.3441,"redshift":0.1117,"n":4.529946,"M":12.8538},{"event":"GW190503_185404","catalog":"GWTC-2.1","lum_dist_Mpc":1621.2499,"redshift":0.3008,"n":5.352516,"M":71.9254},{"event":"GW190512_180714","catalog":"GWTC-2.1","lum_dist_Mpc":1654.0614,"redshift":0.3059,"n":5.286682,"M":46.8009},{"event":"GW190513_205428","catalog":"GWTC-2.1","lum_dist_Mpc":2173.1208,"redshift":0.3999,"n":5.339979,"M":61.2855},{"event":"GW190514_065416","catalog":"GWTC-2.1","lum_dist_Mpc":3277.1448,"redshift":0.5441,"n":5.378478,"M":79.4217},{"event":"GW190517_055101","catalog":"GWTC-2.1","lum_dist_Mpc":2566.9065,"redshift":0.4478,"n":5.351965,"M":64.3938},{"event":"GW190519_153544","catalog":"GWTC-2.1","lum_dist_Mpc":3126.8936,"redshift":0.5233,"n":5.39979,"M":87.8029},{"event":"GW190521_030229","catalog":"GWTC-2.1","lum_dist_Mpc":5241.1785,"redshift":0.82,"n":5.457474,"M":148.0699},{"event":"GW190521_074359","catalog":"GWTC-2.1","lum_dist_Mpc":1234.5699,"redshift":0.2388,"n":5.338083,"M":64.2578},{"event":"GW190527_092055","catalog":"GWTC-2.1","lum_dist_Mpc":3007.8438,"redshift":0.5047,"n":5.387979,"M":87.7929},{"event":"GW190602_175927","catalog":"GWTC-2.1","lum_dist_Mpc":3082.6248,"redshift":0.5173,"n":5.426785,"M":97.2399},{"event":"GW190620_030421","catalog":"GWTC-2.1","lum_dist_Mpc":2361.0117,"redshift":0.4247,"n":5.39088,"M":87.0553},{"event":"GW190630_185205","catalog":"GWTC-2.1","lum_dist_Mpc":939.7027,"redshift":0.1864,"n":5.285348,"M":50.1938},{"event":"GW190701_203306","catalog":"GWTC-2.1","lum_dist_Mpc":2765.7965,"redshift":0.4739,"n":5.38374,"M":83.1671},{"event":"GW190706_222641","catalog":"GWTC-2.1","lum_dist_Mpc":4085.6888,"redshift":0.6764,"n":5.441626,"M":112.0143},{"event":"GW190707_093326","catalog":"GWTC-2.1","lum_dist_Mpc":788.5099,"redshift":0.1597,"n":5.188551,"M":25.4498},{"event":"GW190708_232457","catalog":"GWTC-2.1","lum_dist_Mpc":776.4047,"redshift":0.1607,"n":5.283178,"M":42.6875},{"event":"GW190719_215514","catalog":"GWTC-2.1","lum_dist_Mpc":4182.8527,"redshift":0.6848,"n":5.386528,"M":84.2085},{"event":"GW190720_000836","catalog":"GWTC-2.1","lum_dist_Mpc":742.1505,"redshift":0.1519,"n":5.265695,"M":43.5267},{"event":"GW190727_060333","catalog":"GWTC-2.1","lum_dist_Mpc":2677.1374,"redshift":0.4627,"n":5.38527,"M":86.4893},{"event":"GW190728_064510","catalog":"GWTC-2.1","lum_dist_Mpc":907.3621,"redshift":0.1809,"n":5.222929,"M":35.9875},{"event":"GW190731_140936","catalog":"GWTC-2.1","lum_dist_Mpc":3161.3543,"redshift":0.5281,"n":5.397069,"M":90.2358},{"event":"GW190803_022701","catalog":"GWTC-2.1","lum_dist_Mpc":3036.4028,"redshift":0.5077,"n":5.374726,"M":79.7116},{"event":"GW190805_211137","catalog":"GWTC-2.1","lum_dist_Mpc":4219.5553,"redshift":0.6861,"n":5.377296,"M":83.9891},{"event":"GW190814_211039","catalog":"GWTC-2.1","lum_dist_Mpc":232.6956,"redshift":0.0508,"n":4.188836,"M":25.9061},{"event":"GW190828_063405","catalog":"GWTC-2.1","lum_dist_Mpc":2002.0781,"redshift":0.3664,"n":5.354082,"M":68.1474},{"event":"GW190828_065509","catalog":"GWTC-2.1","lum_dist_Mpc":1692.3879,"redshift":0.3161,"n":5.337614,"M":62.1963},{"event":"GW190910_112807","catalog":"GWTC-2.1","lum_dist_Mpc":1476.4839,"redshift":0.2754,"n":5.328208,"M":57.4609},{"event":"GW190915_235702","catalog":"GWTC-2.1","lum_dist_Mpc":1568.6384,"redshift":0.2929,"n":5.357668,"M":69.2034},{"event":"GW190924_021846","catalog":"GWTC-2.1","lum_dist_Mpc":519.7944,"redshift":0.1113,"n":5.176419,"M":26.7218},{"event":"GW190929_012149","catalog":"GWTC-2.1","lum_dist_Mpc":5013.0552,"redshift":0.7958,"n":5.398601,"M":98.1028},{"event":"GW190930_133541","catalog":"GWTC-2.1","lum_dist_Mpc":747.5765,"redshift":0.1535,"n":5.24888,"M":39.1025},{"event":"GW191103_012549","catalog":"GWTC-2.1","lum_dist_Mpc":1033.0742,"redshift":0.2018,"n":5.207637,"M":37.3451},{"event":"GW191105_143521","catalog":"GWTC-2.1","lum_dist_Mpc":919.2834,"redshift":0.1836,"n":5.253375,"M":41.1892},{"event":"GW191109_010717","catalog":"GWTC-2.1","lum_dist_Mpc":1085.7617,"redshift":0.2104,"n":5.367038,"M":80.4826},{"event":"GW191113_071753","catalog":"GWTC-2.1","lum_dist_Mpc":1655.0432,"redshift":0.3044,"n":5.307083,"M":56.5851},{"event":"GW191126_115259","catalog":"GWTC-2.1","lum_dist_Mpc":1726.0039,"redshift":0.3174,"n":5.281636,"M":50.7851},{"event":"GW191127_050227","catalog":"GWTC-2.1","lum_dist_Mpc":4202.9438,"redshift":0.6878,"n":5.370637,"M":78.7638},{"event":"GW191129_134029","catalog":"GWTC-2.1","lum_dist_Mpc":791.9022,"redshift":0.1602,"n":5.225547,"M":36.7088},{"event":"GW191204_171526","catalog":"GWTC-2.1","lum_dist_Mpc":644.2178,"redshift":0.1368,"n":5.268956,"M":41.7009},{"event":"GW191215_223052","catalog":"GWTC-2.1","lum_dist_Mpc":1622.7388,"redshift":0.3012,"n":5.310659,"M":56.9278},{"event":"GW191216_213338","catalog":"GWTC-2.1","lum_dist_Mpc":375.6279,"redshift":0.0812,"n":5.182218,"M":24.9949},{"event":"GW191222_033537","catalog":"GWTC-2.1","lum_dist_Mpc":3103.0068,"redshift":0.5213,"n":5.380088,"M":84.0047},{"event":"GW191230_180458","catalog":"GWTC-2.1","lum_dist_Mpc":2977.5388,"redshift":0.5003,"n":5.365693,"M":78.5474},{"event":"GW200105_162426","catalog":"GWTC-2.1","lum_dist_Mpc":302.6638,"redshift":0.0666,"n":4.424413,"M":9.0034},{"event":"GW200112_155838","catalog":"GWTC-2.1","lum_dist_Mpc":756.2308,"redshift":0.1554,"n":5.2671,"M":42.9505},{"event":"GW200115_042309","catalog":"GWTC-2.1","lum_dist_Mpc":304.7491,"redshift":0.0671,"n":4.356783,"M":7.0279},{"event":"GW200128_022011","catalog":"GWTC-2.1","lum_dist_Mpc":3403.5498,"redshift":0.5611,"n":5.363258,"M":76.7673},{"event":"GW200129_065458","catalog":"GWTC-2.1","lum_dist_Mpc":841.9688,"redshift":0.168,"n":5.317516,"M":57.9459},{"event":"GW200202_154313","catalog":"GWTC-2.1","lum_dist_Mpc":396.3059,"redshift":0.0849,"n":5.213614,"M":32.2875},{"event":"GW200208_130117","catalog":"GWTC-2.1","lum_dist_Mpc":1798.3975,"redshift":0.3299,"n":5.343029,"M":65.9516},{"event":"GW200208_222617","catalog":"GWTC-2.1","lum_dist_Mpc":3286.2754,"redshift":0.5452,"n":5.368393,"M":79.8839},{"event":"GW200209_085452","catalog":"GWTC-2.1","lum_dist_Mpc":2793.8311,"redshift":0.4767,"n":5.376994,"M":83.9576},{"event":"GW200210_092254","catalog":"GWTC-2.1","lum_dist_Mpc":376.5112,"redshift":0.0815,"n":4.324818,"M":12.2283},{"event":"GW200216_220804","catalog":"GWTC-2.1","lum_dist_Mpc":3375.5107,"redshift":0.5568,"n":5.363247,"M":77.1625},{"event":"GW200219_094415","catalog":"GWTC-2.1","lum_dist_Mpc":2893.9885,"redshift":0.4928,"n":5.374688,"M":82.7684},{"event":"GW200220_061928","catalog":"GWTC-2.1","lum_dist_Mpc":3752.7493,"redshift":0.6209,"n":5.374254,"M":80.8523},{"event":"GW200220_124850","catalog":"GWTC-2.1","lum_dist_Mpc":4161.6929,"redshift":0.6873,"n":5.405285,"M":101.1439},{"event":"GW200224_222234","catalog":"GWTC-2.1","lum_dist_Mpc":1754.1963,"redshift":0.3231,"n":5.341469,"M":65.7378},{"event":"GW200225_060421","catalog":"GWTC-2.1","lum_dist_Mpc":1034.9785,"redshift":0.2025,"n":5.303017,"M":52.7432},{"event":"GW200302_015811","catalog":"GWTC-2.1","lum_dist_Mpc":4265.4678,"redshift":0.6967,"n":5.411044,"M":103.2693},{"event":"GW200306_093714","catalog":"GWTC-2.1","lum_dist_Mpc":2625.3376,"redshift":0.4565,"n":5.376,"M":83.3},{"event":"GW200308_173609","catalog":"GWTC-2.1","lum_dist_Mpc":2783.5249,"redshift":0.4766,"n":5.380684,"M":85.0718},{"event":"GW200311_115853","catalog":"GWTC-2.1","lum_dist_Mpc":1195.4082,"redshift":0.2328,"n":5.328791,"M":59.4012},{"event":"GW200316_215756","catalog":"GWTC-2.1","lum_dist_Mpc":1176.9751,"redshift":0.2291,"n":5.266584,"M":46.8011},{"event":"GW200322_091133","catalog":"GWTC-2.1","lum_dist_Mpc":1875.5847,"redshift":0.3465,"n":5.342929,"M":68.5394},{"event":"GW190408_181802","catalog":"GWTC-3","lum_dist_Mpc":1652.6636,"redshift":0.3072,"n":5.334706,"M":59.6987},{"event":"GW190412_053044","catalog":"GWTC-3","lum_dist_Mpc":771.1082,"redshift":0.1567,"n":5.082,"M":36.1282},{"event":"GW190413_052954","catalog":"GWTC-3","lum_dist_Mpc":2827.4304,"redshift":0.4804,"n":5.364547,"M":73.4},{"event":"GW190413_134308","catalog":"GWTC-3","lum_dist_Mpc":3184.3789,"redshift":0.5314,"n":5.35,"M":69.1},{"event":"GW190421_213856","catalog":"GWTC-3","lum_dist_Mpc":1712.8057,"redshift":0.3174,"n":5.361,"M":74.3},{"event":"GW190424_180648","catalog":"GWTC-3","lum_dist_Mpc":2819.0049,"redshift":0.4797,"n":5.389,"M":81.7},{"event":"GW190503_185404","catalog":"GWTC-3","lum_dist_Mpc":1661.0254,"redshift":0.3063,"n":5.352,"M":72.1},{"event":"GW190512_180714","catalog":"GWTC-3","lum_dist_Mpc":1680.8379,"redshift":0.311,"n":5.284,"M":46.9},{"event":"GW190513_205428","catalog":"GWTC-3","lum_dist_Mpc":2216.0742,"redshift":0.4076,"n":5.339,"M":61.5},{"event":"GW190514_065416","catalog":"GWTC-3","lum_dist_Mpc":3323.1006,"redshift":0.5524,"n":5.379,"M":79.5},{"event":"GW190517_055101","catalog":"GWTC-3","lum_dist_Mpc":2573.1826,"redshift":0.4499,"n":5.352,"M":64.5},{"event":"GW190519_153544","catalog":"GWTC-3","lum_dist_Mpc":3161.0303,"redshift":0.5286,"n":5.399,"M":88.0},{"event":"GW190521_030229","catalog":"GWTC-3","lum_dist_Mpc":5303.8691,"redshift":0.8289,"n":5.457,"M":148.2},{"event":"GW190521_074359","catalog":"GWTC-3","lum_dist_Mpc":1244.5972,"redshift":0.2408,"n":5.339,"M":64.3},{"event":"GW190527_092055","catalog":"GWTC-3","lum_dist_Mpc":3049.2822,"redshift":0.511,"n":5.389,"M":88.0},{"event":"GW190602_175927","catalog":"GWTC-3","lum_dist_Mpc":3134.3081,"redshift":0.5226,"n":5.426,"M":97.1},{"event":"GW190620_030421","catalog":"GWTC-3","lum_dist_Mpc":2386.457,"redshift":0.4285,"n":5.390,"M":87.2},{"event":"GW190630_185205","catalog":"GWTC-3","lum_dist_Mpc":942.2612,"redshift":0.1872,"n":5.285,"M":50.3},{"event":"GW190701_203306","catalog":"GWTC-3","lum_dist_Mpc":2779.8184,"redshift":0.4751,"n":5.383,"M":83.0},{"event":"GW190706_222641","catalog":"GWTC-3","lum_dist_Mpc":4095.9741,"redshift":0.678,"n":5.441,"M":112.1},{"event":"GW190707_093326","catalog":"GWTC-3","lum_dist_Mpc":791.0479,"redshift":0.1602,"n":5.188,"M":25.5},{"event":"GW190708_232457","catalog":"GWTC-3","lum_dist_Mpc":770.1206,"redshift":0.1598,"n":5.283,"M":42.7},{"event":"GW190719_215514","catalog":"GWTC-3","lum_dist_Mpc":4194.0059,"redshift":0.685,"n":5.387,"M":84.3},{"event":"GW190720_000836","catalog":"GWTC-3","lum_dist_Mpc":748.4478,"redshift":0.1527,"n":5.264,"M":43.5},{"event":"GW190727_060333","catalog":"GWTC-3","lum_dist_Mpc":2680.6274,"redshift":0.4626,"n":5.385,"M":86.5},{"event":"GW190728_064510","catalog":"GWTC-3","lum_dist_Mpc":907.7283,"redshift":0.181,"n":5.223,"M":36.0},{"event":"GW190731_140936","catalog":"GWTC-3","lum_dist_Mpc":3178.0835,"redshift":0.5304,"n":5.397,"M":90.0},{"event":"GW190803_022701","catalog":"GWTC-3","lum_dist_Mpc":3028.8926,"redshift":0.5084,"n":5.374,"M":79.7},{"event":"GW190828_063405","catalog":"GWTC-3","lum_dist_Mpc":2002.6309,"redshift":0.3665,"n":5.354,"M":68.1},{"event":"GW190828_065509","catalog":"GWTC-3","lum_dist_Mpc":1693.4771,"redshift":0.3157,"n":5.337,"M":62.2},{"event":"GW190910_112807","catalog":"GWTC-3","lum_dist_Mpc":1476.2295,"redshift":0.2754,"n":5.328,"M":57.5},{"event":"GW190915_235702","catalog":"GWTC-3","lum_dist_Mpc":1575.9521,"redshift":0.2941,"n":5.358,"M":69.3},{"event":"GW190924_021846","catalog":"GWTC-3","lum_dist_Mpc":524.1143,"redshift":0.1122,"n":5.176,"M":26.8},{"event":"GW190929_012149","catalog":"GWTC-3","lum_dist_Mpc":5020.1318,"redshift":0.7961,"n":5.399,"M":98.2},{"event":"GW190930_133541","catalog":"GWTC-3","lum_dist_Mpc":748.9319,"redshift":0.1535,"n":5.249,"M":39.1},{"event":"GW191103_012549","catalog":"GWTC-3","lum_dist_Mpc":990.5786,"redshift":0.1947,"n":5.207,"M":37.1},{"event":"GW191105_143521","catalog":"GWTC-3","lum_dist_Mpc":912.6953,"redshift":0.1825,"n":5.253,"M":41.2},{"event":"GW191109_010717","catalog":"GWTC-3","lum_dist_Mpc":1060.1709,"redshift":0.2059,"n":5.367,"M":80.5},{"event":"GW200105_162426","catalog":"GWTC-3","lum_dist_Mpc":296.2549,"redshift":0.0652,"n":4.424,"M":9.0},{"event":"GW200115_042309","catalog":"GWTC-3","lum_dist_Mpc":303.6211,"redshift":0.0668,"n":4.357,"M":7.0},{"event":"GW200128_022011","catalog":"GWTC-3","lum_dist_Mpc":3403.5498,"redshift":0.5611,"n":5.363,"M":76.8},{"event":"GW200129_065458","catalog":"GWTC-3","lum_dist_Mpc":845.8765,"redshift":0.1686,"n":5.317,"M":58.0},{"event":"GW200202_154313","catalog":"GWTC-3","lum_dist_Mpc":398.6572,"redshift":0.0854,"n":5.213,"M":32.3},{"event":"GW200208_130117","catalog":"GWTC-3","lum_dist_Mpc":1793.9287,"redshift":0.3297,"n":5.343,"M":66.0},{"event":"GW200209_085452","catalog":"GWTC-3","lum_dist_Mpc":2791.7217,"redshift":0.4763,"n":5.377,"M":84.0},{"event":"GW200210_092254","catalog":"GWTC-3","lum_dist_Mpc":376.7078,"redshift":0.0816,"n":4.325,"M":12.2},{"event":"GW200216_220804","catalog":"GWTC-3","lum_dist_Mpc":3392.9424,"redshift":0.5593,"n":5.363,"M":77.2},{"event":"GW200219_094415","catalog":"GWTC-3","lum_dist_Mpc":2892.9485,"redshift":0.4925,"n":5.374,"M":82.8},{"event":"GW200220_061928","catalog":"GWTC-3","lum_dist_Mpc":3740.5142,"redshift":0.6193,"n":5.374,"M":80.9},{"event":"GW200224_222234","catalog":"GWTC-3","lum_dist_Mpc":1748.8994,"redshift":0.3225,"n":5.341,"M":65.7},{"event":"GW200225_060421","catalog":"GWTC-3","lum_dist_Mpc":1031.4585,"redshift":0.2015,"n":5.303,"M":52.7},{"event":"GW200311_115853","catalog":"GWTC-3","lum_dist_Mpc":1194.0908,"redshift":0.2325,"n":5.329,"M":59.4},{"event":"GW200316_215756","catalog":"GWTC-3","lum_dist_Mpc":1168.751,"redshift":0.2281,"n":5.266,"M":46.8},{"event":"GW200322_091133","catalog":"GWTC-3","lum_dist_Mpc":1865.1636,"redshift":0.3441,"n":5.343,"M":68.5},{"event":"GW230518_125908","catalog":"GWTC-4","lum_dist_Mpc":236.721,"redshift":0.0516,"n":4.55241,"M":4.9},{"event":"GW230529_181500","catalog":"GWTC-4","lum_dist_Mpc":204.6627,"redshift":0.0448,"n":5.066715,"M":5.009},{"event":"GW230601_224134","catalog":"GWTC-4","lum_dist_Mpc":3423.23,"redshift":0.5716,"n":5.302932,"M":55.48},{"event":"GW230608_195123","catalog":"GWTC-4","lum_dist_Mpc":1449.7603,"redshift":0.2715,"n":5.290697,"M":51.2},{"event":"GW230624_073545","catalog":"GWTC-4","lum_dist_Mpc":1108.1716,"redshift":0.2159,"n":5.31344,"M":54.79},{"event":"GW230630_170053","catalog":"GWTC-4","lum_dist_Mpc":990.4819,"redshift":0.1955,"n":5.29744,"M":50.27},{"event":"GW230701_203552","catalog":"GWTC-4","lum_dist_Mpc":1756.5278,"redshift":0.3238,"n":5.323025,"M":58.29},{"event":"GW230702_152856","catalog":"GWTC-4","lum_dist_Mpc":841.4375,"redshift":0.1689,"n":5.299782,"M":47.59},{"event":"GW230703_202020","catalog":"GWTC-4","lum_dist_Mpc":2127.1028,"redshift":0.3924,"n":5.356569,"M":67.45},{"event":"GW230705_034741","catalog":"GWTC-4","lum_dist_Mpc":1290.8955,"redshift":0.2479,"n":5.312985,"M":54.59},{"event":"GW230706_172907","catalog":"GWTC-4","lum_dist_Mpc":1441.0085,"redshift":0.2694,"n":5.344887,"M":62.36},{"event":"GW230707_100934","catalog":"GWTC-4","lum_dist_Mpc":1168.7581,"redshift":0.2268,"n":5.308601,"M":53.31},{"event":"GW230708_185234","catalog":"GWTC-4","lum_dist_Mpc":1011.2437,"redshift":0.1993,"n":5.292958,"M":49.18},{"event":"GW230709_155028","catalog":"GWTC-4","lum_dist_Mpc":1028.2219,"redshift":0.2023,"n":5.302956,"M":51.34},{"event":"GW230712_190249","catalog":"GWTC-4","lum_dist_Mpc":1397.5068,"redshift":0.2622,"n":5.297308,"M":51.18},{"event":"GW230714_162404","catalog":"GWTC-4","lum_dist_Mpc":5249.5117,"redshift":0.8417,"n":5.380476,"M":91.0},{"event":"GW230718_125041","catalog":"GWTC-4","lum_dist_Mpc":2164.0674,"redshift":0.3988,"n":5.349742,"M":65.68},{"event":"GW230720_065151","catalog":"GWTC-4","lum_dist_Mpc":7954.6993,"redshift":2.0637,"n":5.394748,"M":130.77},{"event":"GW230724_060603","catalog":"GWTC-4","lum_dist_Mpc":2428.9607,"redshift":0.4384,"n":5.364278,"M":70.43},{"event":"GW230726_015057","catalog":"GWTC-4","lum_dist_Mpc":1631.8528,"redshift":0.3033,"n":5.319734,"M":57.39},{"event":"GW230727_095508","catalog":"GWTC-4","lum_dist_Mpc":1248.1099,"redshift":0.2404,"n":5.298946,"M":50.46},{"event":"GW230729_044605","catalog":"GWTC-4","lum_dist_Mpc":2244.0059,"redshift":0.4128,"n":5.354454,"M":66.99},{"event":"GW230730_185026","catalog":"GWTC-4","lum_dist_Mpc":1688.0146,"redshift":0.3122,"n":5.296949,"M":51.56},{"event":"GW230802_112810","catalog":"GWTC-4","lum_dist_Mpc":1453.1606,"redshift":0.272,"n":5.326044,"M":58.47},{"event":"GW230805_134957","catalog":"GWTC-4","lum_dist_Mpc":1226.9097,"redshift":0.2367,"n":5.310597,"M":53.77},{"event":"GW230806_014524","catalog":"GWTC-4","lum_dist_Mpc":2003.2959,"redshift":0.3697,"n":5.361742,"M":69.88},{"event":"GW230809_110253","catalog":"GWTC-4","lum_dist_Mpc":1461.8503,"redshift":0.2733,"n":5.289693,"M":49.82},{"event":"GW230812_222313","catalog":"GWTC-4","lum_dist_Mpc":2041.9336,"redshift":0.3757,"n":5.320979,"M":58.53},{"event":"GW230814_210919","catalog":"GWTC-4","lum_dist_Mpc":1721.5435,"redshift":0.3176,"n":5.343079,"M":62.79},{"event":"GW230815_012434","catalog":"GWTC-4","lum_dist_Mpc":1261.7939,"redshift":0.2428,"n":5.309706,"M":53.47},{"event":"GW230816_050138","catalog":"GWTC-4","lum_dist_Mpc":2207.8623,"redshift":0.406,"n":5.325199,"M":58.38},{"event":"GW230816_165342","catalog":"GWTC-4","lum_dist_Mpc":1688.2896,"redshift":0.3121,"n":5.320513,"M":57.52},{"event":"GW230822_180929","catalog":"GWTC-4","lum_dist_Mpc":1596.0132,"redshift":0.2969,"n":5.335743,"M":61.04},{"event":"GW230824_090204","catalog":"GWTC-4","lum_dist_Mpc":2278.3267,"redshift":0.4194,"n":5.358069,"M":68.17},{"event":"GW230826_152649","catalog":"GWTC-4","lum_dist_Mpc":1453.9636,"redshift":0.2717,"n":5.336688,"M":61.21},{"event":"GW230828_133251","catalog":"GWTC-4","lum_dist_Mpc":1447.8516,"redshift":0.2707,"n":5.290637,"M":49.84},{"event":"GW230830_045815","catalog":"GWTC-4","lum_dist_Mpc":3279.7856,"redshift":0.5442,"n":5.326916,"M":59.41},{"event":"GW230901_163753","catalog":"GWTC-4","lum_dist_Mpc":2283.3801,"redshift":0.4197,"n":5.329079,"M":59.61},{"event":"GW230903_061957","catalog":"GWTC-4","lum_dist_Mpc":1397.0767,"redshift":0.2625,"n":5.341736,"M":62.15},{"event":"GW230903_224322","catalog":"GWTC-4","lum_dist_Mpc":3101.7402,"redshift":0.5202,"n":5.372568,"M":77.23},{"event":"GW230904_080826","catalog":"GWTC-4","lum_dist_Mpc":3164.5178,"redshift":0.5295,"n":5.362449,"M":74.18},{"event":"GW230905_205823","catalog":"GWTC-4","lum_dist_Mpc":1490.3467,"redshift":0.2785,"n":5.305474,"M":53.3},{"event":"GW230906_133714","catalog":"GWTC-4","lum_dist_Mpc":2447.7612,"redshift":0.4434,"n":5.358741,"M":68.37},{"event":"GW230907_131914","catalog":"GWTC-4","lum_dist_Mpc":1597.2168,"redshift":0.297,"n":5.303785,"M":52.42},{"event":"GW230909_004935","catalog":"GWTC-4","lum_dist_Mpc":2395.0977,"redshift":0.4324,"n":5.340083,"M":61.64},{"event":"GW230910_013306","catalog":"GWTC-4","lum_dist_Mpc":2413.5767,"redshift":0.4357,"n":5.354569,"M":66.79},{"event":"GW230910_015600","catalog":"GWTC-4","lum_dist_Mpc":2272.3979,"redshift":0.4184,"n":5.367744,"M":71.09},{"event":"GW230912_041019","catalog":"GWTC-4","lum_dist_Mpc":1648.6284,"redshift":0.3063,"n":5.335064,"M":61.12},{"event":"GW230913_075838","catalog":"GWTC-4","lum_dist_Mpc":3220.7261,"redshift":0.5362,"n":5.337866,"M":61.06},{"event":"GW230914_082028","catalog":"GWTC-4","lum_dist_Mpc":2266.9763,"redshift":0.4176,"n":5.360601,"M":69.64},{"event":"GW230916_001734","catalog":"GWTC-4","lum_dist_Mpc":2153.1416,"redshift":0.397,"n":5.348944,"M":65.85},{"event":"GW230916_075832","catalog":"GWTC-4","lum_dist_Mpc":1659.1826,"redshift":0.3085,"n":5.335726,"M":61.48},{"event":"GW230919_060101","catalog":"GWTC-4","lum_dist_Mpc":1741.2661,"redshift":0.3214,"n":5.327481,"M":59.3},{"event":"GW230920_013949","catalog":"GWTC-4","lum_dist_Mpc":4272.2891,"redshift":0.6996,"n":5.344439,"M":64.16},{"event":"GW230921_033537","catalog":"GWTC-4","lum_dist_Mpc":4393.9971,"redshift":0.7189,"n":5.363348,"M":70.02},{"event":"GW230921_211003","catalog":"GWTC-4","lum_dist_Mpc":2282.0078,"redshift":0.4194,"n":5.358296,"M":68.19},{"event":"GW230922_082626","catalog":"GWTC-4","lum_dist_Mpc":3011.8853,"redshift":0.5047,"n":5.362568,"M":73.88},{"event":"GW230924_091524","catalog":"GWTC-4","lum_dist_Mpc":2344.0205,"redshift":0.4316,"n":5.372028,"M":73.19},{"event":"GW230924_161141","catalog":"GWTC-4","lum_dist_Mpc":17389.0712,"redshift":2.1487,"n":5.445908,"M":240.95},{"event":"GW230925_152259","catalog":"GWTC-4","lum_dist_Mpc":2073.9214,"redshift":0.3841,"n":5.344928,"M":65.06},{"event":"GW230927_024740","catalog":"GWTC-4","lum_dist_Mpc":2017.8564,"redshift":0.3731,"n":5.355862,"M":67.62},{"event":"GW230927_164853","catalog":"GWTC-4","lum_dist_Mpc":1476.7188,"redshift":0.2756,"n":5.31988,"M":56.87},{"event":"GW230928_164437","catalog":"GWTC-4","lum_dist_Mpc":2388.0703,"redshift":0.4361,"n":5.337569,"M":61.38},{"event":"GW230929_084842","catalog":"GWTC-4","lum_dist_Mpc":3226.0522,"redshift":0.5382,"n":5.335478,"M":59.84},{"event":"GW230930_112412","catalog":"GWTC-4","lum_dist_Mpc":3141.2627,"redshift":0.5247,"n":5.307049,"M":54.22},{"event":"GW231001_180025","catalog":"GWTC-4","lum_dist_Mpc":2671.3853,"redshift":0.4636,"n":5.328735,"M":60.23},{"event":"GW231005_011047","catalog":"GWTC-4","lum_dist_Mpc":2340.5361,"redshift":0.4316,"n":5.342427,"M":62.48},{"event":"GW231006_124851","catalog":"GWTC-4","lum_dist_Mpc":3437.6421,"redshift":0.5738,"n":5.317788,"M":57.57},{"event":"GW231008_153201","catalog":"GWTC-4","lum_dist_Mpc":3082.9602,"redshift":0.5166,"n":5.359695,"M":72.03},{"event":"GW231012_053751","catalog":"GWTC-4","lum_dist_Mpc":2398.3032,"redshift":0.4423,"n":5.346001,"M":64.26},{"event":"GW231014_210748","catalog":"GWTC-4","lum_dist_Mpc":1543.2065,"redshift":0.2891,"n":5.316636,"M":56.94},{"event":"GW231015_160433","catalog":"GWTC-4","lum_dist_Mpc":2498.3948,"redshift":0.4519,"n":5.310834,"M":54.67},{"event":"GW231020_053612","catalog":"GWTC-4","lum_dist_Mpc":3095.0461,"redshift":0.5186,"n":5.310396,"M":54.72},{"event":"GW231022_120952","catalog":"GWTC-4","lum_dist_Mpc":1764.7783,"redshift":0.3262,"n":5.355384,"M":67.86},{"event":"GW231026_001432","catalog":"GWTC-4","lum_dist_Mpc":1625.7808,"redshift":0.3021,"n":5.333638,"M":60.88},{"event":"GW231027_091247","catalog":"GWTC-4","lum_dist_Mpc":1741.5454,"redshift":0.3222,"n":5.334396,"M":61.15},{"event":"GW231030_163217","catalog":"GWTC-4","lum_dist_Mpc":2296.9707,"redshift":0.4229,"n":5.356956,"M":67.93},{"event":"GW231101_011521","catalog":"GWTC-4","lum_dist_Mpc":3237.5317,"redshift":0.5405,"n":5.352754,"M":67.33},{"event":"GW231104_123532","catalog":"GWTC-4","lum_dist_Mpc":1571.1765,"redshift":0.2937,"n":5.339441,"M":62.09},{"event":"GW231105_042749","catalog":"GWTC-4","lum_dist_Mpc":1867.5308,"redshift":0.3447,"n":5.380534,"M":76.68},{"event":"GW231107_010253","catalog":"GWTC-4","lum_dist_Mpc":3454.0063,"redshift":0.5776,"n":5.350396,"M":67.05},{"event":"GW231108_133445","catalog":"GWTC-4","lum_dist_Mpc":3291.0254,"redshift":0.5472,"n":5.376939,"M":78.55},{"event":"GW231109_060434","catalog":"GWTC-4","lum_dist_Mpc":3277.6167,"redshift":0.5451,"n":5.361588,"M":73.81},{"event":"GW231110_140956","catalog":"GWTC-4","lum_dist_Mpc":2266.3662,"redshift":0.4175,"n":5.339855,"M":62.4},{"event":"GW231115_045159","catalog":"GWTC-4","lum_dist_Mpc":3296.1343,"redshift":0.5479,"n":5.349688,"M":66.65},{"event":"GW231116_045822","catalog":"GWTC-4","lum_dist_Mpc":3082.0649,"redshift":0.5169,"n":5.325745,"M":58.61},{"event":"GW231117_095652","catalog":"GWTC-4","lum_dist_Mpc":1596.7334,"redshift":0.2975,"n":5.299374,"M":51.68},{"event":"GW231122_064501","catalog":"GWTC-4","lum_dist_Mpc":3374.9084,"redshift":0.5612,"n":5.331614,"M":59.38},{"event":"GW231127_103700","catalog":"GWTC-4","lum_dist_Mpc":4027.5942,"redshift":0.6647,"n":5.344338,"M":63.1}];
+
+// ─── Config ──────────────────────────────────────────────────────────────────
+const COLORS = { 'GWTC-2.1': '#00d4ff', 'GWTC-3': '#ff6b35', 'GWTC-4': '#b8ff47' };
+const N_TARGET = 5.314;
+const N_BAND_LO = 5.314 - 0.15;
+const N_BAND_HI = 5.314 + 0.15;
+
+let xMode = 'dist'; // 'dist' | 'z'
+let yMode = 'n';    // 'n' | 'M'
+let hiddenCats = new Set();
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function inBand(d) { return d.n >= N_BAND_LO && d.n <= N_BAND_HI; }
+function catColor(cat) { return COLORS[cat]; }
+function hexAlpha(hex, a) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+function buildStats() {
+  const bar = document.getElementById('statsBar');
+  const cats = ['GWTC-2.1','GWTC-3','GWTC-4'];
+  const allBBH = RAW.filter(d => d.n >= 4.76);
+
+  const infos = [
+    { val: RAW.length, lbl: 'Total events' },
+    { val: allBBH.length, lbl: 'In BBH band' },
+    { val: Math.round(Math.min(...RAW.map(d=>d.lum_dist_Mpc))), lbl: 'Min dist (Mpc)' },
+    { val: Math.round(Math.max(...RAW.map(d=>d.lum_dist_Mpc))).toLocaleString(), lbl: 'Max dist (Mpc)' },
+    { val: (Math.max(...RAW.map(d=>d.redshift))).toFixed(2), lbl: 'Max redshift z' },
+  ];
+  bar.innerHTML = infos.map(s =>
+    `<div class="stat"><div class="stat-val">${s.val}</div><div class="stat-lbl">${s.lbl}</div></div>`
+  ).join('');
+}
+
+// ─── Legend ───────────────────────────────────────────────────────────────────
+function buildLegend() {
+  const el = document.getElementById('legend');
+  const items = [
+    ...Object.entries(COLORS).map(([cat, col]) => ({cat, col, label: cat})),
+    { cat: null, col: 'rgba(255,255,180,0.5)', label: 'n = 5.314 ± 0.15 band', special: true }
+  ];
+  el.innerHTML = items.map(item => {
+    const dim = item.cat && hiddenCats.has(item.cat) ? ' dim' : '';
+    const onclick = item.cat ? `toggleCat('${item.cat}')` : '';
+    return `<div class="legend-item${dim}" onclick="${onclick}">
+      <div class="swatch" style="background:${item.col};${item.special?'border-radius:2px;':''};opacity:0.85"></div>
+      <span>${item.label}</span>
+    </div>`;
+  }).join('');
+}
+
+function toggleCat(cat) {
+  if (hiddenCats.has(cat)) hiddenCats.delete(cat); else hiddenCats.add(cat);
+  buildLegend();
+  drawMain();
+}
+
+// ─── Axis controls ────────────────────────────────────────────────────────────
+function setXAxis(m) {
+  xMode = m;
+  document.getElementById('btnDist').classList.toggle('active', m === 'dist');
+  document.getElementById('btnZ').classList.toggle('active', m === 'z');
+  drawMain();
+}
+function setYAxis(m) {
+  yMode = m;
+  document.getElementById('btnN').classList.toggle('active', m === 'n');
+  document.getElementById('btnM').classList.toggle('active', m === 'M');
+  drawMain();
+}
+
+// ─── Main scatter ─────────────────────────────────────────────────────────────
+const mainCanvas = document.getElementById('mainChart');
+const mCtx = mainCanvas.getContext('2d');
+
+let hovered = null;
+
+function getXY(d) {
+  return {
+    x: xMode === 'dist' ? d.lum_dist_Mpc : d.redshift,
+    y: yMode === 'n' ? d.n : d.M
+  };
+}
+
+function drawMain() {
+  const dpr = window.devicePixelRatio || 1;
+  const W = mainCanvas.parentElement.clientWidth;
+  const H = Math.round(W * 0.5);
+  mainCanvas.width  = W * dpr;
+  mainCanvas.height = H * dpr;
+  mainCanvas.style.height = H + 'px';
+  mCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const PAD = { top: 28, right: 28, bottom: 44, left: 60 };
+  const pw = W - PAD.left - PAD.right;
+  const ph = H - PAD.top  - PAD.bottom;
+
+  const vis = RAW.filter(d => !hiddenCats.has(d.catalog));
+  const xs = vis.map(d => getXY(d).x);
+  const ys = vis.map(d => getXY(d).y);
+
+  const xMin = Math.min(...xs) * 0.92;
+  const xMax = Math.max(...xs) * 1.03;
+  const yPad = (Math.max(...ys) - Math.min(...ys)) * 0.08;
+  const yMin = Math.min(...ys) - yPad;
+  const yMax = Math.max(...ys) + yPad;
+
+  function sx(v) { return PAD.left + ((v - xMin) / (xMax - xMin)) * pw; }
+  function sy(v) { return PAD.top  + (1 - (v - yMin) / (yMax - yMin)) * ph; }
+
+  // Background
+  mCtx.fillStyle = '#080e1a';
+  mCtx.fillRect(0, 0, W, H);
+
+  // Grid lines
+  mCtx.strokeStyle = 'rgba(100,160,255,0.07)';
+  mCtx.lineWidth = 1;
+  for (let i = 0; i <= 5; i++) {
+    const gy = PAD.top + (i / 5) * ph;
+    mCtx.beginPath(); mCtx.moveTo(PAD.left, gy); mCtx.lineTo(PAD.left + pw, gy); mCtx.stroke();
+  }
+  for (let i = 0; i <= 6; i++) {
+    const gx = PAD.left + (i / 6) * pw;
+    mCtx.beginPath(); mCtx.moveTo(gx, PAD.top); mCtx.lineTo(gx, PAD.top + ph); mCtx.stroke();
+  }
+
+  // BBH band shading (only for n-axis)
+  if (yMode === 'n') {
+    const bandY1 = sy(N_BAND_HI);
+    const bandY2 = sy(N_BAND_LO);
+    mCtx.fillStyle = 'rgba(255,255,180,0.04)';
+    mCtx.fillRect(PAD.left, bandY1, pw, bandY2 - bandY1);
+    mCtx.strokeStyle = 'rgba(255,255,180,0.28)';
+    mCtx.lineWidth = 1;
+    mCtx.setLineDash([5, 4]);
+    mCtx.beginPath(); mCtx.moveTo(PAD.left, sy(N_TARGET)); mCtx.lineTo(PAD.left + pw, sy(N_TARGET)); mCtx.stroke();
+    mCtx.setLineDash([]);
+    mCtx.strokeStyle = 'rgba(255,255,180,0.14)';
+    mCtx.lineWidth = 0.75;
+    mCtx.beginPath(); mCtx.moveTo(PAD.left, bandY1); mCtx.lineTo(PAD.left + pw, bandY1); mCtx.stroke();
+    mCtx.beginPath(); mCtx.moveTo(PAD.left, bandY2); mCtx.lineTo(PAD.left + pw, bandY2); mCtx.stroke();
+  }
+
+  // Dots
+  for (const d of RAW) {
+    if (hiddenCats.has(d.catalog)) continue;
+    const { x, y } = getXY(d);
+    const px = sx(x), py = sy(y);
+    const col = catColor(d.catalog);
+    const r = (d === hovered) ? 7 : 4;
+    const alpha = (d === hovered) ? 1.0 : (inBand(d) ? 0.85 : 0.45);
+
+    if (d === hovered) {
+      mCtx.beginPath();
+      mCtx.arc(px, py, r + 4, 0, Math.PI * 2);
+      mCtx.fillStyle = hexAlpha(col, 0.18);
+      mCtx.fill();
+    }
+    mCtx.beginPath();
+    mCtx.arc(px, py, r, 0, Math.PI * 2);
+    mCtx.fillStyle = hexAlpha(col, alpha);
+    mCtx.fill();
+  }
+
+  // Axes
+  mCtx.strokeStyle = 'rgba(100,160,255,0.25)';
+  mCtx.lineWidth = 1;
+  mCtx.beginPath();
+  mCtx.moveTo(PAD.left, PAD.top); mCtx.lineTo(PAD.left, PAD.top + ph);
+  mCtx.moveTo(PAD.left, PAD.top + ph); mCtx.lineTo(PAD.left + pw, PAD.top + ph);
+  mCtx.stroke();
+
+  // Y tick labels
+  mCtx.fillStyle = '#4a6a8a';
+  mCtx.font = '9px Space Mono, monospace';
+  mCtx.textAlign = 'right';
+  for (let i = 0; i <= 5; i++) {
+    const val = yMin + (i / 5) * (yMax - yMin);
+    const gy = sy(val);
+    mCtx.fillText(val.toFixed(yMode === 'n' ? 2 : 0), PAD.left - 5, gy + 3);
+  }
+
+  // X tick labels
+  mCtx.textAlign = 'center';
+  for (let i = 0; i <= 6; i++) {
+    const val = xMin + (i / 6) * (xMax - xMin);
+    const gx = sx(val);
+    mCtx.fillText(xMode === 'dist' ? Math.round(val).toLocaleString() : val.toFixed(2), gx, PAD.top + ph + 14);
+  }
+
+  // Axis labels
+  mCtx.fillStyle = '#4a6a8a';
+  mCtx.font = '9px Space Mono, monospace';
+  mCtx.textAlign = 'center';
+  const xLabel = xMode === 'dist' ? 'Luminosity Distance (Mpc)' : 'Redshift z';
+  mCtx.fillText(xLabel, PAD.left + pw / 2, H - 6);
+
+  mCtx.save();
+  mCtx.translate(12, PAD.top + ph / 2);
+  mCtx.rotate(-Math.PI / 2);
+  mCtx.fillText(yMode === 'n' ? 'Octave depth n' : 'Total mass M☉', 0, 0);
+  mCtx.restore();
+
+  // Store for hit testing
+  mainCanvas._sx = sx; mainCanvas._sy = sy;
+  mainCanvas._xMin = xMin; mainCanvas._xMax = xMax;
+  mainCanvas._yMin = yMin; mainCanvas._yMax = yMax;
+  mainCanvas._PAD = PAD; mainCanvas._pw = pw; mainCanvas._ph = ph;
+}
+
+// ─── Hit test ─────────────────────────────────────────────────────────────────
+mainCanvas.addEventListener('mousemove', e => {
+  const rect = mainCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const { _sx: sx, _sy: sy } = mainCanvas;
+  if (!sx) return;
+
+  let best = null, bestDist = 15;
+  for (const d of RAW) {
+    if (hiddenCats.has(d.catalog)) continue;
+    const { x, y } = getXY(d);
+    const dx = sx(x) - mx, dy = sy(y) - my;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < bestDist) { best = d; bestDist = dist; }
+  }
+
+  const tip = document.getElementById('tooltip');
+  if (best) {
+    hovered = best;
+    const col = catColor(best.catalog);
+    tip.innerHTML = `
+      <div class="ev-name">${best.event}</div>
+      <div class="ev-cat" style="color:${col}">${best.catalog}</div>
+      <div class="ev-row"><span>Distance</span><span>${best.lum_dist_Mpc.toFixed(0)} Mpc</span></div>
+      <div class="ev-row"><span>Redshift z</span><span>${best.redshift.toFixed(4)}</span></div>
+      <div class="ev-row"><span>Octave n</span><span>${best.n.toFixed(4)}</span></div>
+      <div class="ev-row"><span>Total mass</span><span>${best.M.toFixed(1)} M☉</span></div>
+      <div class="ev-row"><span>In BBH band</span><span>${inBand(best) ? '✓ yes' : '✗ no'}</span></div>`;
+    tip.style.display = 'block';
+    const tipW = 240, tipH = 160;
+    let tx = e.clientX + 14, ty = e.clientY - 80;
+    if (tx + tipW > window.innerWidth) tx = e.clientX - tipW - 14;
+    if (ty < 0) ty = 0;
+    tip.style.left = tx + 'px';
+    tip.style.top  = ty + 'px';
+    drawMain();
+  } else {
+    if (hovered) { hovered = null; drawMain(); }
+    tip.style.display = 'none';
+  }
+});
+
+mainCanvas.addEventListener('mouseleave', () => {
+  hovered = null;
+  document.getElementById('tooltip').style.display = 'none';
+  drawMain();
+});
+
+// ─── Histogram ────────────────────────────────────────────────────────────────
+const histCanvas = document.getElementById('histChart');
+const hCtx = histCanvas.getContext('2d');
+
+function drawHist() {
+  const dpr = window.devicePixelRatio || 1;
+  const W = histCanvas.parentElement.clientWidth;
+  const H = 80;
+  histCanvas.width  = W * dpr;
+  histCanvas.height = H * dpr;
+  histCanvas.style.width = '100%';
+  histCanvas.style.height = H + 'px';
+  hCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const BINS = 30;
+  const allDist = RAW.map(d => d.lum_dist_Mpc);
+  const lo = Math.min(...allDist), hi = Math.max(...allDist);
+  const step = (hi - lo) / BINS;
+
+  const cats = ['GWTC-2.1','GWTC-3','GWTC-4'];
+  const histData = {};
+  cats.forEach(c => { histData[c] = new Array(BINS).fill(0); });
+  RAW.forEach(d => {
+    const b = Math.min(BINS - 1, Math.floor((d.lum_dist_Mpc - lo) / step));
+    histData[d.catalog][b]++;
+  });
+
+  const maxH = Math.max(...cats.flatMap(c => histData[c]));
+  const PAD = { top: 4, right: 0, bottom: 18, left: 60 };
+  const pw = W - PAD.left - PAD.right;
+  const ph = H - PAD.top  - PAD.bottom;
+  const bw = pw / BINS;
+
+  hCtx.fillStyle = '#080e1a';
+  hCtx.fillRect(0, 0, W, H);
+
+  cats.forEach(cat => {
+    const col = catColor(cat);
+    histData[cat].forEach((count, i) => {
+      const bh = (count / maxH) * ph;
+      const bx = PAD.left + i * bw;
+      const by = PAD.top + ph - bh;
+      hCtx.fillStyle = hexAlpha(col, 0.55);
+      hCtx.fillRect(bx + 1, by, bw - 1, bh);
+    });
+  });
+
+  // x axis labels
+  hCtx.fillStyle = '#4a6a8a';
+  hCtx.font = '8px Space Mono, monospace';
+  hCtx.textAlign = 'center';
+  for (let i = 0; i <= 5; i++) {
+    const v = lo + (i / 5) * (hi - lo);
+    const gx = PAD.left + (i / 5) * pw;
+    hCtx.fillText(Math.round(v).toLocaleString(), gx, H - 4);
+  }
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+buildStats();
+buildLegend();
+drawMain();
+drawHist();
+
+window.addEventListener('resize', () => { drawMain(); drawHist(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Seraphim LQG 4D</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#050810;color:#c8d8f0;font-family:'Space Mono',monospace;overflow:hidden;width:100vw;height:100vh;touch-action:none;}
+canvas{display:block;position:fixed;inset:0;}
+
+#ui{position:fixed;inset:0;pointer-events:none;z-index:10;}
+
+/* title */
+#tbar{pointer-events:none;padding:10px 14px 7px;background:linear-gradient(to bottom,rgba(5,8,16,0.96),transparent);border-bottom:1px solid rgba(100,160,255,0.15);}
+#tbar h1{font-size:11px;letter-spacing:0.16em;color:#7eb8ff;text-transform:uppercase;}
+#tbar p{font-size:9px;color:#f0c060;margin-top:3px;letter-spacing:0.06em;}
+
+/* bottom stats */
+#bbar{position:absolute;bottom:0;left:0;right:0;pointer-events:none;
+  padding:7px 14px 10px;background:linear-gradient(to top,rgba(5,8,16,0.96),transparent);
+  display:flex;gap:16px;flex-wrap:wrap;border-top:1px solid rgba(100,160,255,0.10);}
+.st{display:flex;flex-direction:column;gap:1px;}
+.st .sl{font-size:7px;letter-spacing:0.14em;color:#2a4a7a;text-transform:uppercase;}
+.st .sv{font-size:12px;font-weight:700;}
+
+/* right controls */
+#cbar{position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:6px;pointer-events:auto;}
+.cb{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:0.10em;text-transform:uppercase;
+  padding:7px 11px;background:rgba(10,18,36,0.88);border:1px solid rgba(100,160,255,0.22);
+  color:#7eb8ff;cursor:pointer;min-width:80px;text-align:center;transition:border-color .15s;}
+.cb:hover{border-color:rgba(100,160,255,0.6);}
+.cb.on{border-color:#7eb8ff;background:rgba(40,80,160,0.38);}
+
+/* info button + drawer */
+#ibtn{position:absolute;left:10px;bottom:52px;pointer-events:auto;
+  font-family:'Space Mono',monospace;font-size:8px;letter-spacing:0.12em;text-transform:uppercase;
+  padding:7px 12px;background:rgba(10,18,36,0.88);border:1px solid rgba(100,160,255,0.25);color:#7eb8ff;cursor:pointer;}
+#drawer{position:absolute;left:10px;bottom:82px;width:min(290px,calc(100vw - 95px));
+  background:rgba(5,10,22,0.94);border:1px solid rgba(100,160,255,0.18);
+  padding:12px 14px;display:none;max-height:55vh;overflow-y:auto;pointer-events:auto;}
+#drawer.open{display:block;}
+.ds{margin-bottom:11px;}
+.ds h3{font-size:8px;letter-spacing:0.16em;text-transform:uppercase;color:#3a6aaa;margin-bottom:7px;}
+.ar{display:flex;gap:8px;margin-bottom:6px;align-items:flex-start;}
+.adot{width:3px;min-width:3px;height:36px;border-radius:2px;margin-top:2px;}
+.aname{font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;}
+.adesc{font-size:9px;color:#5a7898;line-height:1.4;margin-top:1px;}
+.aval{font-size:9px;margin-top:2px;}
+.el{font-size:10px;line-height:2.0;padding-left:8px;border-left:2px solid;margin-bottom:4px;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="ui">
+  <div id="tbar">
+    <h1>Seraphim LQG &mdash; 4D Structure</h1>
+    <p>n(C) = 3.561 + 3.506 &times; C &nbsp;|&nbsp; K&#8320; = 1.1467&times;10&#8308;&#8308; Hz&#178; &nbsp;|&nbsp; Zero free parameters</p>
+  </div>
+
+  <div id="cbar">
+    <button class="cb on" id="b-rot" onclick="toggleRot()">&#8635; Rotate</button>
+    <button class="cb" onclick="resetView()">&#8634; Reset</button>
+    <button class="cb on" id="b-sp" onclick="toggleSpin()">Spin: ON</button>
+    <button class="cb on" id="b-ev" onclick="toggleEv()">Events: ON</button>
+    <button class="cb on" id="b-pl" onclick="togglePlane()">Plane: ON</button>
+  </div>
+
+  <button id="ibtn" onclick="toggleDrawer()">&#9776; Info</button>
+
+  <div id="drawer">
+    <div class="ds">
+      <h3>Four Dimensions</h3>
+      <div class="ar"><div class="adot" style="background:#7eb8ff"></div><div><div class="aname" style="color:#7eb8ff">Axis Y &mdash; Octave n</div><div class="adesc">Observable Planck-ladder depth</div><div class="aval" style="color:#7eb8ff">3.561 (flip) &rarr; 5.314 (BBH)</div></div></div>
+      <div class="ar"><div class="adot" style="background:#60e8a0"></div><div><div class="aname" style="color:#60e8a0">Axis X &mdash; Compactness C</div><div class="adesc">GR: C = R&#8209;Schw / 2R</div><div class="aval" style="color:#60e8a0">0 (singularity) &rarr; 0.5 (horizon)</div></div></div>
+      <div class="ar"><div class="adot" style="background:#ff8060"></div><div><div class="aname" style="color:#ff8060">Axis Z &mdash; Realm &ecirc;&#8345;</div><div class="adesc">Robertson orthogonality plane</div><div class="aval" style="color:#ff8060">&Delta;n = 1.753 = n&#8347;&#8347;&#8341; &minus; n&#8347;&#8343;&#7984;&#7992;</div></div></div>
+      <div class="ar"><div class="adot" style="background:#d060ff"></div><div><div class="aname" style="color:#d060ff">Dim 4 &mdash; Spin &chi;&#8336;&#8347;&#8347;</div><div class="adesc">Face-activation modulation</div><div class="aval" style="color:#d060ff">purple=prograde &middot; blue=retro</div></div></div>
+    </div>
+    <div class="ds">
+      <h3>Key Equations</h3>
+      <div class="el" style="color:#f0c060;border-color:#f0c060">n(C) = 3.561 + 3.506&times;C</div>
+      <div class="el" style="color:#7eb8ff;border-color:#7eb8ff">N(C) = n&#7522;&#8342;p&middot;&ecirc;&#7501; + (2C&Delta;n)&middot;&ecirc;&#7523;</div>
+      <div class="el" style="color:#60e8a0;border-color:#60e8a0">&nu;&#178; = K&#8320; / (&radic;(j(j+1))&middot;N&#9733;)</div>
+      <div class="el" style="color:#ff8060;border-color:#ff8060">slope = &chi;(S&#178;) &times; &Delta;n = 2 &times; 1.753</div>
+    </div>
+    <div class="ds">
+      <h3>What you see</h3>
+      <div style="font-size:10px;line-height:1.8;color:#6888aa">
+        <span style="color:#f0c060">&#9644;</span> Gold tube: the compactness line n(C)<br>
+        <span style="color:#ff8060">&#8594;</span> Orange arrow: geometric realm component<br>
+        <span style="color:#7eb8ff">&#8594;</span> Blue arrow: EM realm component<br>
+        <span style="color:#f0c060">&#9679;</span> Gold sphere: BBH horizon (n=5.314)<br>
+        <span style="color:#7eb8ff">&#9679;</span> Blue sphere: flip/singularity (n=3.561)<br>
+        <span style="color:#d060ff">&#9679;</span> Purple/blue dots: 264 LIGO events<br>
+        <span style="color:#60e8a0">&#9679;</span> Green: NSBH range
+      </div>
+    </div>
+  </div>
+
+  <div id="bbar">
+    <div class="st"><span class="sl">Events</span><span class="sv" style="color:#7eb8ff">264 BBH</span></div>
+    <div class="st"><span class="sl">Predicted</span><span class="sv" style="color:#f0c060">5.314</span></div>
+    <div class="st"><span class="sl">Observed</span><span class="sv" style="color:#60e8a0">5.319</span></div>
+    <div class="st"><span class="sl">Offset</span><span class="sv" style="color:#60e8a0">0.05&sigma;</span></div>
+    <div class="st"><span class="sl">Free params</span><span class="sv" style="color:#ff8060">ZERO</span></div>
+    <div class="st"><span class="sl">Slope</span><span class="sv" style="color:#d060ff">&chi;&middot;&Delta;n</span></div>
+  </div>
+</div>
+
+<script>
+// ── Canvas 2D 3D projection engine ───────────────────────────────
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Camera state
+let rotX = 0.38, rotY = 0.52, scale = 1.0;
+let autoRot = true, showSpin = true, showEv = true, showPlane = true;
+
+// Project 3D → 2D with simple perspective
+function project(x, y, z) {
+  // rotate around Y axis
+  const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+  const x1 = x * cosY - z * sinY;
+  const z1 = x * sinY + z * cosY;
+  // rotate around X axis
+  const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+  const y2 = y * cosX - z1 * sinX;
+  const z2 = y * sinX + z1 * cosX;
+  // perspective
+  const fov = 420 * scale;
+  const depth = z2 + 14;
+  const px = W/2 + x1 * fov / depth;
+  const py = H/2 - y2 * fov / depth;
+  return { px, py, depth, z2 };
+}
+
+// ── Coordinate mappings ──────────────────────────────────────────
+function nToY(n)  { return (n - 4.437) * 1.8; }   // center at mean
+function cToX(c)  { return (c - 0.25) * 10; }     // center at C=0.25
+function rToZ(r)  { return r * 3.0; }
+
+// ── Event cloud (seeded deterministically) ───────────────────────
+function mulberry32(a) {
+  return function() {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+}
+const rand = mulberry32(0xDEADBEEF);
+function rng(mu, sig) {
+  let u = rand(), v = rand();
+  return mu + sig * Math.sqrt(-2 * Math.log(u + 1e-9)) * Math.cos(2 * Math.PI * v);
+}
+
+const events = [];
+for (let i = 0; i < 264; i++) {
+  const chi = rng(0.05, 0.18);
+  const n   = rng(5.319, 0.22) + 0.15 * chi;
+  const x   = cToX(0.5) + rng(0, 0.25);
+  const y   = nToY(n);
+  const z   = chi * 0.6 + rng(0, 0.12);
+  const col = chi > 0.05 ? [208, 96, 255] : chi < -0.05 ? [96, 144, 255] : [220, 220, 255];
+  events.push({ x, y, z, col, n, chi });
+}
+
+// ── Compactness line points ───────────────────────────────────────
+const compLine = [];
+for (let i = 0; i <= 60; i++) {
+  const c = i / 120;
+  const n = 3.561 + 3.506 * c;
+  compLine.push([cToX(c), nToY(n), 0]);
+}
+
+// ── Realm plane grid ──────────────────────────────────────────────
+const PLANEN = 12;
+function planePoint(ci, ri) {
+  const c = ci / PLANEN * 0.5;
+  const r = ri / PLANEN;
+  const n = 3.561 + 3.506 * c;
+  return [cToX(c), nToY(n), rToZ(r * 0.5)];
+}
+
+// ── Spin arc ──────────────────────────────────────────────────────
+const spinArc = [];
+for (let i = 0; i <= 40; i++) {
+  const chi = -0.4 + i / 40 * 0.8;
+  const n   = 5.319 + 0.30 * chi;
+  spinArc.push([cToX(0.5) + chi * 0.5, nToY(n), chi * 1.2]);
+}
+
+// ── Robertson / Heisenberg planes ────────────────────────────────
+function makePlaneQuad(n_val) {
+  const y = nToY(n_val);
+  const x0 = cToX(-0.05), x1 = cToX(0.55);
+  const z0 = -0.5, z1 = 2.5;
+  return [[x0,y,z0],[x1,y,z0],[x1,y,z1],[x0,y,z1]];
+}
+
+// ── Draw helpers ──────────────────────────────────────────────────
+function drawLine3D(pts, color, alpha, width) {
+  if (pts.length < 2) return;
+  const projs = pts.map(p => project(p[0], p[1], p[2]));
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = alpha;
+  ctx.lineWidth   = width;
+  ctx.beginPath();
+  ctx.moveTo(projs[0].px, projs[0].py);
+  for (let i = 1; i < projs.length; i++) ctx.lineTo(projs[i].px, projs[i].py);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawCircle3D(x, y, z, r, fillColor, glowColor, alpha) {
+  const p = project(x, y, z);
+  const screenR = r * 420 * scale / (p.depth + 0.01);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  if (glowColor) {
+    const g = ctx.createRadialGradient(p.px, p.py, 0, p.px, p.py, screenR * 2.5);
+    g.addColorStop(0, glowColor);
+    g.addColorStop(1, 'transparent');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, screenR * 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = fillColor;
+  ctx.beginPath();
+  ctx.arc(p.px, p.py, Math.max(1.5, screenR), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  return { px: p.px, py: p.py, depth: p.depth };
+}
+
+function drawArrow3D(x0, y0, z0, x1, y1, z1, color, alpha, width) {
+  const pA = project(x0, y0, z0);
+  const pB = project(x1, y1, z1);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = width;
+  ctx.beginPath();
+  ctx.moveTo(pA.px, pA.py);
+  ctx.lineTo(pB.px, pB.py);
+  ctx.stroke();
+  // arrowhead
+  const dx = pB.px - pA.px, dy = pB.py - pA.py;
+  const len = Math.sqrt(dx*dx + dy*dy);
+  if (len > 2) {
+    const ux = dx/len, uy = dy/len;
+    const hs = 9;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(pB.px, pB.py);
+    ctx.lineTo(pB.px - ux*hs - uy*hs*0.4, pB.py - uy*hs + ux*hs*0.4);
+    ctx.lineTo(pB.px - ux*hs + uy*hs*0.4, pB.py - uy*hs - ux*hs*0.4);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawFilledPoly3D(corners, color, alpha) {
+  if (corners.length < 3) return;
+  const projs = corners.map(p => project(p[0], p[1], p[2]));
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(projs[0].px, projs[0].py);
+  for (let i = 1; i < projs.length; i++) ctx.lineTo(projs[i].px, projs[i].py);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawAxisLine(x0,y0,z0, x1,y1,z1, color, dashed) {
+  const pA = project(x0,y0,z0), pB = project(x1,y1,z1);
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = 0.5;
+  ctx.lineWidth = 1.2;
+  if (dashed) ctx.setLineDash([4,5]);
+  ctx.beginPath();
+  ctx.moveTo(pA.px, pA.py);
+  ctx.lineTo(pB.px, pB.py);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawAxisLabel(x,y,z, text, color) {
+  const p = project(x,y,z);
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.globalAlpha = 0.6;
+  ctx.font = '9px Space Mono, monospace';
+  ctx.fillText(text, p.px + 4, p.py - 4);
+  ctx.restore();
+}
+
+// ── Pulse animation ───────────────────────────────────────────────
+let t = 0;
+
+// ── Main draw ─────────────────────────────────────────────────────
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // dark background gradient
+  const bg = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W,H)*0.7);
+  bg.addColorStop(0, '#080d18');
+  bg.addColorStop(1, '#050810');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // ── Grid floor ──
+  for (let i = -5; i <= 6; i++) {
+    const v = i * 1.0;
+    drawLine3D([[cToX(-0.1),nToY(3.4),v*0.5],[cToX(0.6),nToY(3.4),v*0.5]], '#0e1e33', 0.7, 0.8);
+    drawLine3D([[cToX(i/10*0.5+0.0),nToY(3.4),-0.6],[cToX(i/10*0.5+0.0),nToY(3.4),3.0]], '#0e1e33', 0.7, 0.8);
+  }
+
+  // ── Axes ──
+  drawAxisLine(cToX(-0.05), nToY(3.3), 0,  cToX(-0.05), nToY(5.6), 0,   '#2a4a80', false);
+  drawAxisLine(cToX(-0.05), nToY(3.38), 0, cToX(0.58),  nToY(3.38), 0,  '#204a38', false);
+  drawAxisLine(cToX(-0.05), nToY(3.38), -0.3, cToX(-0.05), nToY(3.38), 2.8, '#662210', false);
+  drawAxisLine(cToX(-0.05), nToY(5.314), -0.2, cToX(0.56), nToY(5.314), -0.2, '#5020a0', true);
+
+  drawAxisLabel(cToX(-0.05), nToY(5.7), 0, 'n (octave)', '#4a7aaa');
+  drawAxisLabel(cToX(0.58), nToY(3.32), 0, 'C (compact)', '#306050');
+  drawAxisLabel(cToX(-0.05), nToY(3.32), 2.8, 'ê_r (realm)', '#882210');
+
+  // ── Realm plane ──
+  if (showPlane) {
+    for (let ci = 0; ci < PLANEN; ci++) {
+      for (let ri = 0; ri < PLANEN; ri++) {
+        const a = planePoint(ci,   ri);
+        const b = planePoint(ci+1, ri);
+        const c2 = planePoint(ci+1, ri+1);
+        const d = planePoint(ci,   ri+1);
+        drawFilledPoly3D([a,b,c2,d], '#1a4080', 0.07);
+      }
+    }
+    // wireframe
+    for (let ci = 0; ci <= PLANEN; ci++) {
+      const row = [];
+      for (let ri = 0; ri <= PLANEN; ri++) row.push(planePoint(ci, ri));
+      drawLine3D(row, '#1a3a6a', 0.20, 0.7);
+    }
+    for (let ri = 0; ri <= PLANEN; ri++) {
+      const col = [];
+      for (let ci = 0; ci <= PLANEN; ci++) col.push(planePoint(ci, ri));
+      drawLine3D(col, '#1a3a6a', 0.20, 0.7);
+    }
+  }
+
+  // ── Robertson / Heisenberg horizontal planes ──
+  drawFilledPoly3D(makePlaneQuad(5.314), '#c09010', 0.05);
+  drawFilledPoly3D(makePlaneQuad(4.314), '#3050a0', 0.04);
+  // label them
+  const rLabel = project(cToX(0.52), nToY(5.314), 0.2);
+  const hLabel = project(cToX(0.52), nToY(4.314), 0.2);
+  ctx.save();
+  ctx.font = '8px Space Mono,monospace';
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle = '#c09010'; ctx.fillText('Robertson n=5.314', rLabel.px, rLabel.py - 4);
+  ctx.fillStyle = '#4466cc'; ctx.fillText('Heisenberg n=4.314', hLabel.px, hLabel.py - 4);
+  ctx.restore();
+
+  // ── Compactness line (gold tube effect) ──
+  // thick outer glow
+  drawLine3D(compLine, '#806010', 0.25, 7);
+  drawLine3D(compLine, '#d09020', 0.50, 3.5);
+  drawLine3D(compLine, '#f0c060', 0.90, 1.5);
+
+  // ── Realm vector arrows ──
+  const flipBase = [cToX(0), nToY(3.561), 0];
+  const geoEnd   = [cToX(0), nToY(3.561 + 1.753), 0];
+  const emEnd    = [cToX(0.5), nToY(3.561 + 1.753), rToZ(1.0)];
+  const bbhEnd   = [cToX(0.5), nToY(5.314), 0];
+
+  drawArrow3D(...flipBase, ...geoEnd, '#ff8060', 0.85, 2.0);
+  drawArrow3D(...geoEnd,   ...emEnd,  '#7eb8ff', 0.85, 2.0);
+  // resultant (gold, thicker)
+  drawArrow3D(...flipBase, ...bbhEnd, '#f0c060', 0.95, 2.8);
+
+  // small right-angle symbol at geoEnd
+  const pe = project(...geoEnd);
+  ctx.save();
+  ctx.strokeStyle = '#888888'; ctx.lineWidth = 1; ctx.globalAlpha = 0.4;
+  ctx.strokeRect(pe.px, pe.py - 8, 8, 8);
+  ctx.restore();
+
+  // ── Spin arc ──
+  if (showSpin) {
+    drawLine3D(spinArc, '#8020b0', 0.35, 5);
+    drawLine3D(spinArc, '#d060ff', 0.65, 2);
+    const spinLabel = project(...spinArc[spinArc.length-1]);
+    ctx.save(); ctx.font='8px Space Mono,monospace'; ctx.fillStyle='#d060ff'; ctx.globalAlpha=0.6;
+    ctx.fillText('χ_eff axis', spinLabel.px+4, spinLabel.py); ctx.restore();
+  }
+
+  // ── Events (sort by depth for painter's algo) ──
+  if (showEv) {
+    const evProj = events.map(e => {
+      const p = project(e.x, e.y, e.z);
+      return { ...e, ...p };
+    });
+    evProj.sort((a,b) => b.depth - a.depth);
+    for (const e of evProj) {
+      const r = e.col[0], g = e.col[1], b2 = e.col[2];
+      ctx.save();
+      ctx.globalAlpha = 0.65;
+      ctx.fillStyle = `rgb(${r},${g},${b2})`;
+      ctx.beginPath();
+      ctx.arc(e.px, e.py, 2.5, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // ── Key anchor spheres ──
+  // NSBH (green)
+  for (const nval of [4.11, 4.15, 4.19]) {
+    const c = (nval - 3.561) / 3.506;
+    drawCircle3D(cToX(c), nToY(nval), 0, 0.12, '#60e8a0', null, 0.80);
+  }
+  // Flip / singularity (blue)
+  drawCircle3D(cToX(0), nToY(3.561), 0, 0.14, '#7eb8ff', 'rgba(80,130,255,0.15)', 0.90);
+  // BBH horizon (gold, pulsing)
+  const pulse = 0.17 + 0.04 * Math.sin(t * 2.2);
+  drawCircle3D(cToX(0.5), nToY(5.314), 0, pulse, '#f0c060', 'rgba(240,192,80,0.18)', 0.95);
+
+  // ── Labels on anchors ──
+  const pBBH  = project(cToX(0.5), nToY(5.314), 0);
+  const pFlip = project(cToX(0),   nToY(3.561), 0);
+  ctx.save();
+  ctx.font = '9px Space Mono,monospace';
+  ctx.globalAlpha = 0.75;
+  ctx.fillStyle = '#f0c060'; ctx.fillText('n=5.314 BBH',  pBBH.px + 10, pBBH.py - 4);
+  ctx.fillStyle = '#7eb8ff'; ctx.fillText('n=3.561 flip', pFlip.px + 10, pFlip.py - 4);
+  ctx.restore();
+}
+
+// ── Animation loop ────────────────────────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  t += 0.006;
+  if (autoRot) rotY += 0.004;
+  draw();
+}
+animate();
+
+// ── Interaction ───────────────────────────────────────────────────
+let drag = false, lastX = 0, lastY = 0, pinch0 = null;
+
+canvas.addEventListener('mousedown', e => { drag = true; lastX = e.clientX; lastY = e.clientY; autoRot = false; document.getElementById('b-rot').classList.remove('on'); });
+window.addEventListener('mouseup',   () => drag = false);
+window.addEventListener('mousemove', e => {
+  if (!drag) return;
+  rotY += (e.clientX - lastX) * 0.008;
+  rotX += (e.clientY - lastY) * 0.006;
+  rotX = Math.max(-0.9, Math.min(0.9, rotX));
+  lastX = e.clientX; lastY = e.clientY;
+});
+canvas.addEventListener('wheel', e => { scale *= e.deltaY > 0 ? 0.95 : 1.05; scale = Math.max(0.3, Math.min(3, scale)); e.preventDefault(); }, { passive: false });
+
+canvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) { drag = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; autoRot = false; document.getElementById('b-rot').classList.remove('on'); }
+  if (e.touches.length === 2) pinch0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+  e.preventDefault();
+}, { passive: false });
+canvas.addEventListener('touchmove', e => {
+  if (e.touches.length === 1 && drag) {
+    rotY += (e.touches[0].clientX - lastX) * 0.008;
+    rotX += (e.touches[0].clientY - lastY) * 0.006;
+    rotX = Math.max(-0.9, Math.min(0.9, rotX));
+    lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+  }
+  if (e.touches.length === 2 && pinch0 !== null) {
+    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    scale *= d / pinch0; scale = Math.max(0.3, Math.min(3, scale)); pinch0 = d;
+  }
+  e.preventDefault();
+}, { passive: false });
+canvas.addEventListener('touchend', () => { drag = false; pinch0 = null; });
+
+function toggleRot()   { autoRot = !autoRot; document.getElementById('b-rot').classList.toggle('on', autoRot); }
+function toggleSpin()  { showSpin = !showSpin; document.getElementById('b-sp').classList.toggle('on', showSpin); document.getElementById('b-sp').textContent = 'Spin: ' + (showSpin?'ON':'OFF'); }
+function toggleEv()    { showEv = !showEv;   document.getElementById('b-ev').classList.toggle('on', showEv);   document.getElementById('b-ev').textContent = 'Events: ' + (showEv?'ON':'OFF'); }
+function togglePlane() { showPlane = !showPlane; document.getElementById('b-pl').classList.toggle('on', showPlane); document.getElementById('b-pl').textContent = 'Plane: ' + (showPlane?'ON':'OFF'); }
+function toggleDrawer(){ document.getElementById('drawer').classList.toggle('open'); }
+function resetView()   { rotX = 0.38; rotY = 0.52; scale = 1.0; autoRot = true; document.getElementById('b-rot').classList.add('on'); }
+</script>
+</body>
+</html>

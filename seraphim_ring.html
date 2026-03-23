@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Seraphim Octave Ring</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap');
+
+  :root {
+    --bg:        #07080f;
+    --bg2:       #0d0f1c;
+    --ring:      #1e2240;
+    --ring-glow: #2a3060;
+    --bbh:       #ffb300;
+    --dS:        #4fc3f7;
+    --flip:      #80cbc4;
+    --desert:    #b71c1c;
+    --seesaw:    #ef9a9a;
+    --string:    #ff7043;
+    --ew:        #ba68c8;
+    --qcd:       #9575cd;
+    --cmb:       #26c6da;
+    --hcond:     #66bb6a;
+    --grid1:     rgba(255,179,0,0.18);
+    --grid2:     rgba(79,195,247,0.14);
+    --text:      #c8cce8;
+    --dim:       #5a5f80;
+    --accent:    #ffb300;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── starfield ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 15% 20%, rgba(255,255,255,.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 73% 8%,  rgba(255,255,255,.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 41% 55%, rgba(255,255,255,.25)0%, transparent 100%),
+      radial-gradient(1px 1px at 88% 37%, rgba(255,255,255,.35)0%, transparent 100%),
+      radial-gradient(1px 1px at 5%  80%, rgba(255,255,255,.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 62% 91%, rgba(255,255,255,.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 70%, rgba(255,255,255,.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 95% 60%, rgba(255,255,255,.25)0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    position: relative; z-index: 2;
+    text-align: center;
+    padding: 2.5rem 1rem 1rem;
+    border-bottom: 1px solid var(--ring);
+  }
+  header h1 {
+    font-family: 'Crimson Pro', serif;
+    font-weight: 300;
+    font-size: clamp(1.4rem, 3vw, 2.2rem);
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  header p {
+    font-size: .65rem;
+    color: var(--dim);
+    letter-spacing: .12em;
+    margin-top: .4rem;
+  }
+
+  /* ── tab bar ── */
+  .tabs {
+    display: flex;
+    justify-content: center;
+    gap: .5rem;
+    padding: 1rem;
+    position: relative; z-index: 2;
+  }
+  .tab {
+    background: none;
+    border: 1px solid var(--ring);
+    color: var(--dim);
+    font-family: 'Space Mono', monospace;
+    font-size: .6rem;
+    letter-spacing: .1em;
+    padding: .4rem .9rem;
+    cursor: pointer;
+    transition: all .2s;
+    text-transform: uppercase;
+  }
+  .tab:hover  { border-color: var(--bbh); color: var(--bbh); }
+  .tab.active { border-color: var(--bbh); color: var(--bbh); background: rgba(255,179,0,.06); }
+
+  /* ── panels ── */
+  .panel { display: none; position: relative; z-index: 1; }
+  .panel.active { display: block; }
+
+  /* ── FULL RING panel ── */
+  #panel-full {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+  }
+  #panel-full.active { display: flex; }
+
+  .ring-wrap {
+    position: relative;
+    width: min(92vw, 580px);
+    aspect-ratio: 1;
+  }
+
+  canvas.ring-canvas {
+    width: 100%; height: 100%;
+    display: block;
+  }
+
+  /* ── tooltip ── */
+  #tooltip {
+    position: fixed;
+    background: #0d0f1c;
+    border: 1px solid var(--ring-glow);
+    padding: .5rem .8rem;
+    font-size: .62rem;
+    line-height: 1.6;
+    pointer-events: none;
+    z-index: 100;
+    max-width: 220px;
+    display: none;
+    box-shadow: 0 0 20px rgba(79,195,247,.15);
+  }
+  #tooltip .name  { color: #fff; font-weight: 700; font-size: .68rem; }
+  #tooltip .n-val { color: var(--bbh); }
+  #tooltip .desc  { color: var(--dim); margin-top: .2rem; }
+
+  /* ── ZOOMED panel ── */
+  #panel-zoom {
+    display: none;
+    flex-direction: row;
+    gap: 1.5rem;
+    padding: 1rem 1.5rem;
+    align-items: flex-start;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  #panel-zoom.active { display: flex; }
+
+  /* ── IDENTITIES panel ── */
+  #panel-ids {
+    padding: 1.5rem 2rem;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  .id-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .id-card {
+    background: var(--bg2);
+    border: 1px solid var(--ring);
+    padding: 1rem 1.2rem;
+    transition: border-color .2s;
+  }
+  .id-card:hover { border-color: var(--bbh); }
+  .id-card .status {
+    font-size: .55rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: .5rem;
+  }
+  .status.derived   { color: #66bb6a; }
+  .status.suggestive{ color: var(--bbh); }
+  .status.partial   { color: var(--dS); }
+  .id-card h3 {
+    font-family: 'Crimson Pro', serif;
+    font-size: 1rem;
+    font-weight: 400;
+    color: #fff;
+    margin-bottom: .4rem;
+  }
+  .id-card .formula {
+    font-size: .65rem;
+    color: var(--bbh);
+    background: rgba(255,179,0,.05);
+    padding: .3rem .5rem;
+    margin: .4rem 0;
+    border-left: 2px solid var(--bbh);
+  }
+  .id-card p {
+    font-size: .6rem;
+    color: var(--dim);
+    line-height: 1.7;
+  }
+  .precision { color: #66bb6a; font-weight: 700; }
+
+  /* ── LEGEND ── */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1rem;
+    padding: .8rem 1rem;
+    justify-content: center;
+    border-top: 1px solid var(--ring);
+    margin-top: .8rem;
+    position: relative; z-index: 2;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: .35rem;
+    font-size: .56rem; color: var(--dim); letter-spacing: .06em;
+  }
+  .legend-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .legend-box {
+    width: 14px; height: 8px; flex-shrink: 0; border-radius: 1px;
+  }
+
+  /* section title */
+  .section-title {
+    font-size: .6rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: .8rem;
+    padding-bottom: .4rem;
+    border-bottom: 1px solid var(--ring);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>The Seraphim Octave Ring</h1>
+  <p>n = log₂(ν_P / ν) · Circumference = 201.87 octaves · n=0 at 12 o'clock, clockwise</p>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="showPanel('full')">Full Ring</button>
+  <button class="tab" onclick="showPanel('zoom')">First 40 Oct</button>
+  <button class="tab" onclick="showPanel('ids')">Ring Identities</button>
+</div>
+
+<!-- ── FULL RING ── -->
+<div id="panel-full" class="panel active">
+  <div class="ring-wrap">
+    <canvas id="c-full" class="ring-canvas"></canvas>
+  </div>
+</div>
+
+<!-- ── ZOOMED ── -->
+<div id="panel-zoom" class="panel">
+  <div class="ring-wrap" style="width:min(92vw,520px)">
+    <canvas id="c-zoom" class="ring-canvas"></canvas>
+  </div>
+</div>
+
+<!-- ── IDENTITIES ── -->
+<div id="panel-ids" class="panel">
+  <p class="section-title">Key Ring Identities — March 19, 2026</p>
+  <div class="id-grid">
+
+    <div class="id-card">
+      <div class="status derived">DERIVED</div>
+      <h3>Identity 1 · de Sitter Zone</h3>
+      <div class="formula">2 · n_anti = n_flip + offset₁</div>
+      <p>3.616 = 3.561 + 0.055 ✓ exact<br>
+      The de Sitter arc (C&lt;0 region) closes exactly one Grid 1 vacuum step past the realm boundary.</p>
+    </div>
+
+    <div class="id-card">
+      <div class="status suggestive">SUGGESTIVE</div>
+      <h3>Identity 2 · CMB Antipodal</h3>
+      <div class="formula">CMB = antipode(n_BBH) + Δn</div>
+      <p>108.0 = 106.249 + 1.751<br>
+      <span class="precision">Δ = 0.002 octaves.</span><br>
+      CMB sits one Seraphim interval past the antipode of the BBH scale.</p>
+    </div>
+
+    <div class="id-card">
+      <div class="status partial">PARTIAL DERIVATION</div>
+      <h3>Identity 3 · T_CMB Formula</h3>
+      <div class="formula">T_CMB = LQG_factor × √(ν_Hub)</div>
+      <p>LQG_factor = 4.793×10⁻¹¹ K/√Hz<br>
+      Fixed by K₀, γ, N★ from 264 events.<br>
+      Predicted: <span class="precision">2.740 K</span> vs FIRAS 2.725 K (0.5%).
+      </p>
+    </div>
+
+    <div class="id-card">
+      <div class="status derived">DERIVED</div>
+      <h3>Robertson Cascade</h3>
+      <div class="formula">k = 2(C + 1) · C ∈ {−1, −½, 0, +½}</div>
+      <p>Grid 1 mode numbers are not free. C quantised in ħ/2 units. k=3 for n_BBH confirmed by 264 events.</p>
+    </div>
+
+    <div class="id-card">
+      <div class="status derived">DERIVED</div>
+      <h3>Desert Locked to n_BBH</h3>
+      <div class="formula">n_string = n_BBH + 4.247<br>n_seesaw = n_BBH + 14.247</div>
+      <p>Both desert walls are fixed offsets from the confirmed BBH scale via k_BBH=3 and χ(S²)³ on the chi ladder. <span class="precision">Δ=0.019 / 0.011 oct.</span></p>
+    </div>
+
+    <div class="id-card">
+      <div class="status suggestive">SUGGESTIVE</div>
+      <h3>Prime Indexing</h3>
+      <div class="formula">k = prime(dim(j))</div>
+      <p>Grid 1 j=½ → dim=2 → 2nd prime=3 = k_BBH ✓<br>
+      Grid 2 j=2  → dim=5 → 5th prime=11 = k_seesaw ✓ (Δ=0.008 oct)</p>
+    </div>
+
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-box" style="background:rgba(183,28,28,.5)"></div>GUT Desert</div>
+  <div class="legend-item"><div class="legend-box" style="background:rgba(79,195,247,.25)"></div>de Sitter zone (C&lt;0)</div>
+  <div class="legend-item"><div class="legend-box" style="background:rgba(255,179,0,.25)"></div>BBH band</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--bbh)"></div>n_BBH ★ confirmed</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--flip)"></div>n_flip</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--dS)"></div>n_anti (de Sitter)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--cmb)"></div>CMB</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--ew)"></div>EW / QCD</div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+const N_HUB = 201.87;
+
+const SCALES = [
+  { n:0.055,  label:'Grid 1\nvacuum',    color:'#aaaaaa', r:6,  desc:'Grid 1 k=0 vacuum mode. C=−1.000 exactly.' },
+  { n:0.275,  label:'Grid 2\nvacuum',    color:'#aaaaff', r:6,  desc:'Grid 2 k=0 vacuum. offset₂=5×offset₁.' },
+  { n:1.808,  label:'n_anti\n(de Sitter)',color:'#4fc3f7', r:9,  desc:'Anti-horizon. C=−0.5. Derived March 18.' },
+  { n:3.561,  label:'n_flip',            color:'#80cbc4', r:9,  desc:'Realm boundary. C=0. Robertson-independent.' },
+  { n:5.314,  label:'n_BBH ★\n264 events',color:'#ffb300',r:13, desc:'BBH mergers. C=+0.5. Confirmed 264 events, 0.05σ.' },
+  { n:9.58,   label:'String\nwall',      color:'#ff7043', r:8,  desc:'Desert lower wall. chi k=3. Δ=0.019 oct.' },
+  { n:14.565, label:'Desert\ncenter',    color:'#b71c1c', r:5,  desc:'GUT Desert midpoint.' },
+  { n:19.55,  label:'Seesaw\nwall',      color:'#ef9a9a', r:8,  desc:'Seesaw / right-handed neutrino. chi k=8. Δ=0.011 oct.' },
+  { n:59.41,  label:'Electroweak',       color:'#ba68c8', r:7,  desc:'EW symmetry breaking ~100 GeV.' },
+  { n:68.8,   label:'QCD',               color:'#9575cd', r:6,  desc:'QCD confinement ~150 MeV.' },
+  { n:92.19,  label:'H condensation\nceiling',color:'#66bb6a',r:7,desc:'Hydrogen ionization / matter condensation ceiling. Zero violations.' },
+  { n:100.935,label:'Cavity\ncenter',    color:'#444466', r:5,  desc:'Ring equator. Planck/Hubble antipode.' },
+  { n:108.0,  label:'CMB',              color:'#26c6da', r:10, desc:'CMB photon decoupling. T=2.725 K. antipode(n_BBH)+Δn.' },
+  { n:201.87, label:'Hubble\n= Planck wrap',color:'#cccccc',r:7,desc:'Hubble horizon = Planck wall. Ring closure.' },
+];
+
+// ── Geometry helpers ──────────────────────────────────────────────────────────
+function nToAngle(n, circ=N_HUB) {
+  // 0 at top (π/2), clockwise
+  return Math.PI/2 - (n/circ)*2*Math.PI;
+}
+function nToXY(n, r, cx, cy, circ=N_HUB) {
+  const a = nToAngle(n, circ);
+  return [cx + r*Math.cos(a), cy - r*Math.sin(a)];
+}
+
+// ── Draw arc fill ──────────────────────────────────────────────────────────────
+function arcFill(ctx, cx, cy, rInner, rOuter, n1, n2, color, circ=N_HUB) {
+  const a1 = -nToAngle(n1, circ) + Math.PI/2;  // canvas angle (clockwise from top)
+  const a2 = -nToAngle(n2, circ) + Math.PI/2;
+  // canvas: angle 0=right, clockwise. We need top=0, clockwise.
+  const ca1 = -(nToAngle(n1,circ)) ;
+  const ca2 = -(nToAngle(n2,circ)) ;
+  ctx.beginPath();
+  ctx.arc(cx, cy, rOuter, ca1, ca2, false);
+  ctx.arc(cx, cy, rInner, ca2, ca1, true);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+// ── Tick marks ─────────────────────────────────────────────────────────────────
+function drawTicks(ctx, cx, cy, R, circ, step, rInner, color, fontSize, showLabel) {
+  for(let n=0; n<circ; n+=step) {
+    const [x1,y1] = nToXY(n, rInner, cx, cy, circ);
+    const [x2,y2] = nToXY(n, R+4, cx, cy, circ);
+    ctx.beginPath();
+    ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+    ctx.strokeStyle = color; ctx.lineWidth=.7; ctx.stroke();
+    if(showLabel) {
+      const [xl,yl] = nToXY(n, R+14, cx, cy, circ);
+      ctx.fillStyle = color; ctx.font=`${fontSize}px 'Space Mono', monospace`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(n, xl, yl);
+    }
+  }
+}
+
+// ── Draw dot ────────────────────────────────────────────────────────────────────
+function drawDot(ctx, cx, cy, R, s, glow) {
+  if(glow) {
+    const g = ctx.createRadialGradient(cx,cy,0,cx,cy,s.r*3);
+    g.addColorStop(0, s.color+'66'); g.addColorStop(1,'transparent');
+    ctx.beginPath(); ctx.arc(cx,cy,s.r*3,0,Math.PI*2);
+    ctx.fillStyle=g; ctx.fill();
+  }
+  ctx.beginPath(); ctx.arc(cx,cy,s.r,0,Math.PI*2);
+  ctx.fillStyle=s.color;
+  ctx.strokeStyle='#00000088'; ctx.lineWidth=1;
+  ctx.fill(); ctx.stroke();
+}
+
+// ── FULL RING CANVAS ─────────────────────────────────────────────────────────
+function drawFull() {
+  const canvas = document.getElementById('c-full');
+  const dpr    = window.devicePixelRatio || 1;
+  const size   = canvas.parentElement.offsetWidth;
+  canvas.width  = size * dpr;
+  canvas.height = size * dpr;
+  canvas.style.width  = size+'px';
+  canvas.style.height = size+'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const cx = size/2, cy = size/2;
+  const R  = size*0.38;
+
+  ctx.clearRect(0,0,size,size);
+
+  // base ring
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+  ctx.strokeStyle='#1e2240'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,R*0.88,0,Math.PI*2);
+  ctx.strokeStyle='#12152a'; ctx.lineWidth=.8; ctx.stroke();
+
+  // de Sitter zone fill
+  arcFill(ctx,cx,cy, R*0.87, R, 0, 3.616, 'rgba(79,195,247,0.10)');
+
+  // desert fill
+  arcFill(ctx,cx,cy, R*0.87, R, 9.58, 19.55, 'rgba(183,28,28,0.35)');
+
+  // BBH band fill
+  arcFill(ctx,cx,cy, R*0.87, R, 4.5, 6.0, 'rgba(255,179,0,0.18)');
+
+  // antipodal connector: BBH <-> CMB
+  const [bx,by] = nToXY(5.314, R*0.5, cx, cy);
+  const [cmbx,cmby] = nToXY(108.0, R*0.5, cx, cy);
+  ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(cmbx,cmby);
+  ctx.strokeStyle='rgba(255,179,0,0.2)'; ctx.lineWidth=.8;
+  ctx.setLineDash([4,6]); ctx.stroke(); ctx.setLineDash([]);
+
+  // equator diameter
+  const [eq1x,eq1y]=nToXY(100.935, R*.85,cx,cy);
+  const [eq2x,eq2y]=nToXY(100.935+N_HUB/2, R*.85,cx,cy);
+  ctx.beginPath(); ctx.moveTo(eq1x,eq1y); ctx.lineTo(eq2x,eq2y);
+  ctx.strokeStyle='rgba(100,100,150,0.2)'; ctx.lineWidth=.6;
+  ctx.setLineDash([2,8]); ctx.stroke(); ctx.setLineDash([]);
+
+  // tick marks every 20 oct
+  drawTicks(ctx, cx, cy, R, N_HUB, 20, R*0.87, '#2a2f50', 8.5, true);
+  // small ticks every 5
+  for(let n=0; n<=N_HUB; n+=5) {
+    if(n%20===0) continue;
+    const [x1,y1]=nToXY(n,R*.9,cx,cy);
+    const [x2,y2]=nToXY(n,R,cx,cy);
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
+    ctx.strokeStyle='#1e2240';ctx.lineWidth=.5;ctx.stroke();
+  }
+
+  // centre text
+  ctx.fillStyle='#aaaacc'; ctx.font="italic 11px 'Crimson Pro',serif";
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('n(C) = 3.561 + 3.506×C', cx, cy+8);
+  ctx.fillStyle='#444466'; ctx.font="9px 'Space Mono',monospace";
+  ctx.fillText('circumference = 201.87 oct', cx, cy+24);
+
+  // dots
+  SCALES.forEach(s => {
+    const [dx,dy] = nToXY(s.n, R, cx, cy);
+    drawDot(ctx, dx, dy, R, s, s.r >= 9);
+  });
+
+  // labels for a few key ones
+  const labelled = [5.314, 3.561, 1.808, 9.58, 19.55, 108.0, 59.41, 92.19, 201.87];
+  SCALES.filter(s=>labelled.includes(s.n)).forEach(s => {
+    const lr  = R + 22 + (s.r > 8 ? 6 : 0);
+    const [lx,ly] = nToXY(s.n, lr, cx, cy);
+    const lines = s.label.split('\n');
+    ctx.font=`${s.r>8?8.5:7.5}px 'Space Mono',monospace`;
+    ctx.fillStyle = s.color;
+    ctx.textAlign = lx < cx ? 'right' : (Math.abs(lx-cx)<20 ? 'center' : 'left');
+    ctx.textBaseline = ly < cy ? 'bottom' : 'top';
+    lines.forEach((line,i) => ctx.fillText(line, lx, ly + i*9));
+  });
+
+  // store hit regions for mouse
+  canvas._hits = SCALES.map(s => {
+    const [dx,dy] = nToXY(s.n, R, cx, cy);
+    return { x:dx, y:dy, r: s.r+6, s };
+  });
+}
+
+// ── ZOOMED CANVAS (first 40 octaves) ─────────────────────────────────────────
+function drawZoom() {
+  const canvas = document.getElementById('c-zoom');
+  const dpr    = window.devicePixelRatio||1;
+  const size   = canvas.parentElement.offsetWidth;
+  canvas.width  = size*dpr; canvas.height=size*dpr;
+  canvas.style.width=size+'px'; canvas.style.height=size+'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const circ = 40, cx=size/2, cy=size/2, R=size*.38;
+  ctx.clearRect(0,0,size,size);
+
+  // base ring
+  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);
+  ctx.strokeStyle='#1e2240';ctx.lineWidth=1.5;ctx.stroke();
+
+  // desert fill
+  arcFill(ctx,cx,cy,R*.87,R,9.58,19.55,'rgba(183,28,28,0.38)',circ);
+  // de Sitter
+  arcFill(ctx,cx,cy,R*.87,R,0,3.616,'rgba(79,195,247,0.14)',circ);
+  // BBH
+  arcFill(ctx,cx,cy,R*.87,R,4.5,6.0,'rgba(255,179,0,0.22)',circ);
+
+  // Grid 1 harmonic dots (squares)
+  for(let k=0;k<=10;k++) {
+    const n = k*1.753+0.055;
+    if(n>circ) break;
+    const [dx,dy]=nToXY(n,R,cx,cy,circ);
+    ctx.fillRect(dx-4,dy-4,8,8);
+    ctx.fillStyle='rgba(255,179,0,0.5)';
+    ctx.fillRect(dx-3,dy-3,6,6);
+  }
+  // Grid 2 harmonic diamonds
+  for(let k=0;k<=14;k++) {
+    const n=k*1.753+0.275;
+    if(n>circ) break;
+    const [dx,dy]=nToXY(n,R,cx,cy,circ);
+    ctx.save();
+    ctx.translate(dx,dy);ctx.rotate(Math.PI/4);
+    ctx.fillStyle='rgba(79,195,247,0.55)';
+    ctx.fillRect(-3,-3,6,6);
+    ctx.restore();
+  }
+
+  // tick labels
+  for(let n=0;n<=circ;n+=5) {
+    const [x1,y1]=nToXY(n,R*0.88,cx,cy,circ);
+    const [x2,y2]=nToXY(n,R*1.02,cx,cy,circ);
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
+    ctx.strokeStyle='#2a2f50';ctx.lineWidth=.8;ctx.stroke();
+    const [xl,yl]=nToXY(n,R*1.1,cx,cy,circ);
+    ctx.fillStyle='#404060';ctx.font="8px 'Space Mono',monospace";
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(n,xl,yl);
+  }
+
+  // zoomed scales
+  const zoom_s = SCALES.filter(s=>s.n<=circ);
+  zoom_s.forEach(s=>{
+    const [dx,dy]=nToXY(s.n,R,cx,cy,circ);
+    drawDot(ctx,dx,dy,R,s,s.r>=9);
+  });
+
+  // labels
+  zoom_s.filter(s=>s.r>=7).forEach(s=>{
+    const lr=R+24;
+    const [lx,ly]=nToXY(s.n,lr,cx,cy,circ);
+    const lines=s.label.split('\n');
+    ctx.font=`${s.r>9?8.5:7.5}px 'Space Mono',monospace`;
+    ctx.fillStyle=s.color;
+    ctx.textAlign=lx<cx?'right':(Math.abs(lx-cx)<20?'center':'left');
+    ctx.textBaseline=ly<cy?'bottom':'top';
+    lines.forEach((l,i)=>ctx.fillText(l,lx,ly+i*9));
+  });
+
+  // centre identities text
+  const ids=[
+    {y:-46, col:'#aaaacc', txt:'2·n_anti = n_flip + offset₁'},
+    {y:-32, col:'#ffb30099',txt:'3.616 = 3.561 + 0.055 ✓'},
+    {y:-12, col:'#aaaacc', txt:'Desert: k=3 to k=8 on χ(S²) ladder'},
+    {y:4,   col:'#ffb30099',txt:'n_BBH+4.247 / n_BBH+14.247'},
+    {y:24,  col:'#aaaacc', txt:'▪ Grid 1 (j=½)   ◆ Grid 2 (j=2)'},
+  ];
+  ids.forEach(({y,col,txt})=>{
+    ctx.fillStyle=col; ctx.font="7.5px 'Space Mono',monospace";
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(txt,cx,cy+y);
+  });
+
+  canvas._hits = zoom_s.map(s=>{
+    const [dx,dy]=nToXY(s.n,R,cx,cy,circ);
+    return {x:dx,y:dy,r:s.r+6,s};
+  });
+}
+
+// ── Tooltip ───────────────────────────────────────────────────────────────────
+const tip = document.getElementById('tooltip');
+function showTip(s, ev) {
+  tip.innerHTML = `<div class="name">${s.label.replace('\n',' ')}</div>
+    <div class="n-val">n = ${s.n}</div>
+    <div class="desc">${s.desc}</div>`;
+  tip.style.display='block';
+  moveTip(ev);
+}
+function moveTip(ev) {
+  let x=ev.clientX+14, y=ev.clientY-10;
+  if(x+230>window.innerWidth) x=ev.clientX-240;
+  tip.style.left=x+'px'; tip.style.top=y+'px';
+}
+function hideTip() { tip.style.display='none'; }
+
+function attachMouse(canvasId) {
+  const c = document.getElementById(canvasId);
+  const dpr = window.devicePixelRatio||1;
+  c.addEventListener('mousemove', ev=>{
+    const rect=c.getBoundingClientRect();
+    const mx=(ev.clientX-rect.left);
+    const my=(ev.clientY-rect.top);
+    if(!c._hits) return;
+    let hit=null;
+    for(const h of c._hits) {
+      const d=Math.hypot(mx-h.x,my-h.y);
+      if(d<h.r){hit=h;break;}
+    }
+    if(hit){ c.style.cursor='pointer'; showTip(hit.s,ev); }
+    else   { c.style.cursor='default'; hideTip(); }
+  });
+  c.addEventListener('mouseleave', hideTip);
+  window.addEventListener('mousemove', ev=>{
+    if(tip.style.display==='block') moveTip(ev);
+  });
+}
+
+// ── Panel switching ───────────────────────────────────────────────────────────
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  event.target.classList.add('active');
+  if(id==='full') { drawFull(); }
+  if(id==='zoom') { drawZoom(); }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', ()=>{
+  drawFull();
+  attachMouse('c-full');
+  attachMouse('c-zoom');
+});
+window.addEventListener('resize', ()=>{
+  const fp = document.getElementById('panel-full');
+  const zp = document.getElementById('panel-zoom');
+  if(fp.classList.contains('active')) drawFull();
+  if(zp.classList.contains('active')) drawZoom();
+});
+</script>
+</body>
+</html>
