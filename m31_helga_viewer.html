@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M31 HELGA · Seraphim Compactness</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg:     #05070f;
+  --bg2:    #090c18;
+  --bg3:    #0d1020;
+  --border: #151c30;
+  --text:   #8a96b8;
+  --dim:    #2e3655;
+  --gold:   #c9a84c;
+  --gold2:  #ead47a;
+  --cyan:   #44c4c4;
+  --violet: #8b66d4;
+  --red:    #d45555;
+  --green:  #4db87a;
+  --ceil:   #c9a84c;
+}
+
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  background:var(--bg);
+  color:var(--text);
+  font-family:'DM Mono',monospace;
+  min-height:100vh;
+  padding:2rem;
+}
+
+h1 {
+  font-family:'DM Serif Display',serif;
+  font-style:italic;
+  font-weight:400;
+  font-size:clamp(1.6rem,3vw,2.4rem);
+  color:#fff;
+  letter-spacing:.01em;
+}
+.sub {
+  font-size:.58rem;
+  color:var(--dim);
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  margin-top:.4rem;
+}
+.eq {
+  font-family:'DM Serif Display',serif;
+  font-style:italic;
+  font-size:.9rem;
+  color:var(--gold);
+  margin-top:.6rem;
+}
+
+header {
+  border-bottom:1px solid var(--border);
+  padding-bottom:1.4rem;
+  margin-bottom:2rem;
+}
+
+/* ── AXIS ── */
+.axis-wrap {
+  position:relative;
+  margin-bottom:2.5rem;
+}
+canvas { display:block; width:100%; }
+
+/* ── TABLE ── */
+.tbl-wrap { overflow-x:auto; margin-bottom:2.5rem; }
+table {
+  width:100%;
+  border-collapse:collapse;
+  font-size:.6rem;
+}
+th {
+  text-align:left;
+  padding:.5rem .8rem;
+  color:var(--dim);
+  font-size:.52rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  border-bottom:1px solid var(--border);
+  font-weight:400;
+}
+td {
+  padding:.55rem .8rem;
+  border-bottom:1px solid rgba(21,28,48,.7);
+  vertical-align:middle;
+}
+tr:last-child td { border-bottom:none; }
+.dot {
+  width:9px; height:9px; border-radius:50%;
+  display:inline-block; margin-right:.5rem; vertical-align:middle;
+  flex-shrink:0;
+}
+.n-val  { color:var(--gold2); font-weight:500; }
+.c-val  { color:var(--cyan); }
+.d-val  { color:var(--text); }
+.pos    { color:var(--green); }
+
+/* ── INSIGHT BOX ── */
+.insight {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-left:2px solid var(--gold);
+  padding:1rem 1.2rem;
+  font-size:.6rem;
+  line-height:2;
+  margin-bottom:2rem;
+}
+.insight strong { color:var(--gold2); }
+.insight .label {
+  font-size:.52rem; color:var(--dim);
+  letter-spacing:.12em; text-transform:uppercase;
+  display:block; margin-bottom:.5rem;
+}
+
+/* ── LEGEND ── */
+.legend {
+  display:flex; flex-wrap:wrap; gap:.8rem;
+  font-size:.55rem; margin-bottom:1.5rem;
+}
+.leg-item { display:flex; align-items:center; gap:.35rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>M31 · HELGA Dust Components</h1>
+  <div class="sub">Herschel HELGA · Viaene+2014 SED decomposition · Seraphim v18.3</div>
+  <div class="eq">n(C) = 3.561 + 3.506 × C &nbsp;·&nbsp; C_eff = (n − 3.561) / 3.506</div>
+</header>
+
+<!-- Legend -->
+<div class="legend" id="legend"></div>
+
+<!-- n-axis canvas -->
+<div class="axis-wrap">
+  <canvas id="axis"></canvas>
+</div>
+
+<!-- Data table -->
+<div class="tbl-wrap">
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th>Component</th>
+        <th>T_dust (K)</th>
+        <th>λ_peak (μm)</th>
+        <th>n</th>
+        <th>C_eff</th>
+        <th>Δ from n_H</th>
+        <th>Position</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<!-- Key insight -->
+<div class="insight">
+  <span class="label">Framework interpretation</span>
+  <strong>Condensation zone</strong> (where grains FORM): n ≈ 91.3–94.0 &nbsp;·&nbsp; C_eff ≈ 25.0–25.8<br>
+  <strong>HELGA cold dust</strong> (grain EMISSION): n ≈ 100.5–103.1 &nbsp;·&nbsp; C_eff ≈ 27.6–28.4 &nbsp;·&nbsp; 8–11 oct <em>above</em> condensation zone<br>
+  <strong>WISE mid-IR</strong> (warm grain emission): n ≈ 74–83 &nbsp;·&nbsp; C_eff ≈ 20–23 &nbsp;·&nbsp; 9–18 oct <em>below</em> condensation zone<br><br>
+  The elemental condensation ceiling (n_H = 92.19) sits exactly <strong>between</strong> WISE warm emission and HELGA cold emission.
+  Dust grain formation occupies a 2.66-octave window. The grains then radiate on either side of it.
+</div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────────────
+const N_FLIP = 3.561, SLOPE = 3.506, N_H = 92.19;
+
+const ROWS = [
+  { name:"Cold diffuse disk",  T:16,  wav:181, n:103.1431, c:28.4033, d:10.9531 },
+  { name:"Warm diffuse disk",  T:22,  wav:132, n:102.6877, c:28.2734, d:10.4977 },
+  { name:"Star-forming ring",  T:45,  wav:64,  n:101.6433, c:27.9756, d:9.4533  },
+  { name:"HII region dust",    T:70,  wav:41,  n:101.0008, c:27.7923, d:8.8108  },
+  { name:"PDR boundary",       T:100, wav:29,  n:100.5013, c:27.6498, d:8.3113  },
+];
+
+// Element condensation zone reference
+const ELEM_N_LO = 91.3, ELEM_N_HI = 94.0;
+
+// WISE band reference
+const WISE = [
+  { label:"W4 22μm", n:83.2, color:"#d45555" },
+  { label:"W3 12μm", n:80.4, color:"#c9a84c" },
+  { label:"W2 4.6μm",n:83.8, color:"#8b66d4" },
+  { label:"W1 3.4μm",n:84.9, color:"#44c4c4" },
+];
+
+const COLORS = ["#6a85e0","#4db87a","#c9a84c","#d45555","#8b66d4"];
+
+// ── LEGEND ────────────────────────────────────────────────────────────────────
+const legEl = document.getElementById("legend");
+ROWS.forEach((r,i) => {
+  const d = document.createElement("div");
+  d.className = "leg-item";
+  d.innerHTML = `<span class="dot" style="background:${COLORS[i]}"></span>${r.name}`;
+  legEl.appendChild(d);
+});
+// Reference lines
+[{label:"n_H = 92.19 (ceiling)",col:"#c9a84c"},
+ {label:"Element zone 91.3–94.0",col:"rgba(201,168,76,.3)"}].forEach(x=>{
+  const d=document.createElement("div");d.className="leg-item";
+  d.innerHTML=`<span style="width:18px;height:2px;background:${x.col};display:inline-block;margin-right:.35rem;flex-shrink:0"></span>${x.label}`;
+  legEl.appendChild(d);
+});
+
+// ── TABLE ─────────────────────────────────────────────────────────────────────
+const tbody = document.getElementById("tbody");
+ROWS.forEach((r,i) => {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><span class="dot" style="background:${COLORS[i]}"></span><span style="color:#dde">${r.name}</span></td>
+    <td class="d-val">${r.T} K</td>
+    <td class="d-val">${r.wav} μm</td>
+    <td class="n-val">${r.n.toFixed(4)}</td>
+    <td class="c-val">${r.c.toFixed(4)}</td>
+    <td class="pos">+${r.d.toFixed(4)}</td>
+    <td style="color:#4db87a;font-size:.52rem">${r.d.toFixed(1)} oct above n_H</td>
+  `;
+  tbody.appendChild(tr);
+});
+
+// ── AXIS CANVAS ───────────────────────────────────────────────────────────────
+function draw() {
+  const canvas = document.getElementById("axis");
+  const dpr    = window.devicePixelRatio || 1;
+  const W      = canvas.parentElement.clientWidth;
+  const H      = 320;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + "px";
+  canvas.style.height = H + "px";
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+
+  ctx.fillStyle = "#090c18";
+  ctx.fillRect(0,0,W,H);
+
+  const N_LO = 74, N_HI = 108;
+  const PL = 170, PR = 30, PT = 50, PB = 55;
+  const axW = W - PL - PR;
+
+  function nx(n) { return PL + (n - N_LO) / (N_HI - N_LO) * axW; }
+
+  // ── Background zones ──
+  // Element condensation zone
+  ctx.fillStyle = "rgba(201,168,76,.07)";
+  ctx.fillRect(nx(ELEM_N_LO), PT, nx(ELEM_N_HI)-nx(ELEM_N_LO), H-PT-PB);
+
+  // HELGA cold dust zone
+  const helgaLo = Math.min(...ROWS.map(r=>r.n)) - 0.5;
+  const helgaHi = Math.max(...ROWS.map(r=>r.n)) + 0.5;
+  ctx.fillStyle = "rgba(77,184,122,.05)";
+  ctx.fillRect(nx(helgaLo), PT, nx(helgaHi)-nx(helgaLo), H-PT-PB);
+
+  // ── Axis line ──
+  ctx.strokeStyle = "#151c30";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(PL, H-PB);
+  ctx.lineTo(W-PR, H-PB);
+  ctx.stroke();
+
+  // ── Tick marks ──
+  ctx.font = "10px DM Mono";
+  ctx.textAlign = "center";
+  for (let n = 75; n <= 107; n++) {
+    const x = nx(n);
+    if (x < PL || x > W-PR) continue;
+    ctx.strokeStyle = "#151c30";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x,H-PB); ctx.lineTo(x,H-PB+4); ctx.stroke();
+    if (n % 5 === 0) {
+      ctx.fillStyle = "#2e3655";
+      ctx.fillText(n, x, H-PB+16);
+    }
+  }
+
+  // Axis label
+  ctx.fillStyle = "#2e3655";
+  ctx.font = "9px DM Mono";
+  ctx.textAlign = "center";
+  ctx.fillText("octave depth  n = log₂(ν_Planck / ν)     ← lower frequency / longer wavelength", W/2, H-8);
+
+  // ── Zone labels ──
+  ctx.font = "8px DM Mono";
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(201,168,76,.5)";
+  ctx.fillText("ELEM ZONE", nx((ELEM_N_LO+ELEM_N_HI)/2), PT-8);
+  ctx.fillText("91.3–94.0", nx((ELEM_N_LO+ELEM_N_HI)/2), PT-20);
+
+  ctx.fillStyle = "rgba(77,184,122,.4)";
+  ctx.fillText("HELGA cold dust", nx((helgaLo+helgaHi)/2), PT-8);
+  ctx.fillText("100.5–103.1", nx((helgaLo+helgaHi)/2), PT-20);
+
+  // ── n_H ceiling line ──
+  const xH = nx(N_H);
+  ctx.strokeStyle = "#c9a84c";
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(xH,PT-5); ctx.lineTo(xH,H-PB); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#c9a84c";
+  ctx.font = "8.5px DM Mono";
+  ctx.textAlign = "center";
+  ctx.fillText("n_H = 92.19", xH, PT-22);
+  ctx.fillText("condensation ceiling", xH, PT-11);
+
+  // ── Element condensation zone bracket ──
+  ctx.strokeStyle = "rgba(201,168,76,.35)";
+  ctx.lineWidth = 1;
+  const exL = nx(ELEM_N_LO), exR = nx(ELEM_N_HI);
+  ctx.beginPath();
+  ctx.moveTo(exL, PT+4); ctx.lineTo(exL, PT+12);
+  ctx.moveTo(exR, PT+4); ctx.lineTo(exR, PT+12);
+  ctx.moveTo(exL, PT+8); ctx.lineTo(exR, PT+8);
+  ctx.stroke();
+
+  // ── WISE band markers (bottom row) ──
+  const wiseY = H - PB - 16;
+  WISE.forEach(w => {
+    const x = nx(w.n);
+    if (x < PL || x > W-PR) return;
+    ctx.strokeStyle = w.color + "80";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2,4]);
+    ctx.beginPath(); ctx.moveTo(x,PT); ctx.lineTo(x,wiseY-6); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = w.color;
+    ctx.beginPath(); ctx.arc(x, wiseY, 4, 0, Math.PI*2); ctx.fill();
+    ctx.font = "7.5px DM Mono";
+    ctx.textAlign = "center";
+    ctx.fillText(w.label, x, wiseY+14);
+  });
+
+  // WISE row label
+  ctx.fillStyle = "#2e3655";
+  ctx.font = "8px DM Mono";
+  ctx.textAlign = "left";
+  ctx.fillText("WISE bands", PL-PL+4, wiseY+3);
+
+  // ── HELGA component rows ──
+  // Two rows to avoid overlap
+  const rowA = H - PB - 55;
+  const rowB = H - PB - 90;
+  const rowLabel = H - PB - 55;
+
+  ctx.fillStyle = "#2e3655";
+  ctx.font = "8px DM Mono";
+  ctx.textAlign = "left";
+  ctx.fillText("HELGA components", 4, rowA+3);
+
+  ROWS.forEach((r,i) => {
+    const x = nx(r.n);
+    const y = i % 2 === 0 ? rowA : rowB;
+
+    // Vertical drop line
+    ctx.strokeStyle = COLORS[i] + "50";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2,3]);
+    ctx.beginPath(); ctx.moveTo(x, H-PB); ctx.lineTo(x, y+6); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Dot
+    ctx.fillStyle = COLORS[i];
+    ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2); ctx.fill();
+
+    // Label
+    ctx.font = "8px DM Mono";
+    ctx.textAlign = "center";
+    ctx.fillStyle = COLORS[i];
+    ctx.fillText(r.T + "K", x, y - 8);
+
+    // n value
+    ctx.fillStyle = "#ead47a";
+    ctx.font = "7.5px DM Mono";
+    ctx.fillText("n=" + r.n.toFixed(1), x, y + (i%2===0 ? 18 : -18));
+  });
+
+  // ── Gap annotation ──
+  // Arrow showing the gap between elem zone and HELGA
+  const gapX1 = nx(ELEM_N_HI + 0.3);
+  const gapX2 = nx(helgaLo - 0.3);
+  const gapY  = PT + 32;
+  if (gapX2 > gapX1 + 20) {
+    ctx.strokeStyle = "rgba(138,150,184,.3)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(gapX1, gapY); ctx.lineTo(gapX2, gapY);
+    ctx.stroke();
+    // Arrowheads
+    ctx.beginPath();
+    ctx.moveTo(gapX1,gapY); ctx.lineTo(gapX1+6,gapY-3); ctx.lineTo(gapX1+6,gapY+3); ctx.closePath();
+    ctx.fillStyle = "rgba(138,150,184,.3)"; ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(gapX2,gapY); ctx.lineTo(gapX2-6,gapY-3); ctx.lineTo(gapX2-6,gapY+3); ctx.closePath();
+    ctx.fill();
+    ctx.font = "8px DM Mono"; ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(138,150,184,.5)";
+    const gapN = (helgaLo - ELEM_N_HI).toFixed(1);
+    ctx.fillText("Δn ≈ " + gapN + " oct  (grain formation → cold emission)", (gapX1+gapX2)/2, gapY-8);
+  }
+}
+
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(draw);
+} else {
+  setTimeout(draw, 300);
+}
+window.addEventListener("resize", draw);
+</script>
+</body>
+</html>
