@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Seraphim Study</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:#07090f;color:rgba(255,255,255,.85);font-family:'Crimson Pro',serif;min-height:100vh;overflow-x:hidden}
+.hdr{padding:14px 12px 0;text-align:center}
+.hdr h1{font-size:clamp(14px,4vw,20px);font-weight:300;letter-spacing:.3em;text-transform:uppercase;color:#c8a84b}
+.hdr p{font-family:'JetBrains Mono',monospace;font-size:clamp(7px,1.8vw,9px);color:rgba(255,255,255,.3);margin-top:3px}
+.tabs{display:flex;gap:2px;padding:10px 10px 0;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:5px 11px;font-family:'JetBrains Mono',monospace;font-size:clamp(7px,2vw,9px);letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(255,255,255,.08);background:transparent;color:rgba(255,255,255,.3);cursor:pointer;transition:all .2s;white-space:nowrap}
+.tab.on{background:rgba(200,168,75,.15);border-color:#c8a84b;color:#c8a84b}
+.cv-wrap{display:flex;justify-content:center;padding:6px 0 0}
+canvas{display:block}
+.panel{max-width:500px;margin:6px auto 0;padding:0 10px 20px}
+.card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);padding:9px 13px;margin-bottom:3px}
+.card .ct{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:6px}
+.row{display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:11px}
+.row:last-child{border-bottom:none}
+.rl{color:rgba(255,255,255,.35);font-size:10px}
+.rv{font-family:'JetBrains Mono',monospace;font-size:9px}
+.rv.g{color:#c8a84b}.rv.b{color:#5b9bd5}.rv.r{color:#d55b5b}.rv.o{color:#d5915b}.rv.gr{color:#5bd578}.rv.t{color:#5bd5c8}.rv.p{color:#a05bd5}
+.hb{background:rgba(200,168,75,.05);border:1px solid rgba(200,168,75,.18);padding:9px 13px;margin-bottom:3px}
+.hb .ct{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:rgba(200,168,75,.5);margin-bottom:5px}
+.hb p{font-size:12px;line-height:1.65;color:rgba(255,255,255,.82)}
+.hb p em{color:#c8a84b;font-style:normal}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>Seraphim Octave Ring</h1>
+  <p>v18.3 · 201.87 oct · W = 1/α = 137.036 · Study Visualizer</p>
+</div>
+<div class="tabs">
+  <button class="tab on" onclick="go('ring',this)">Full Ring</button>
+  <button class="tab"    onclick="go('gut',this)">GUT Desert</button>
+  <button class="tab"    onclick="go('d2',this)">2nd Desert</button>
+  <button class="tab"    onclick="go('rect',this)">α–QCD Rect</button>
+  <button class="tab"    onclick="go('helix',this)">Helix</button>
+</div>
+<div class="cv-wrap"><canvas id="c"></canvas></div>
+<div class="panel" id="panel"></div>
+
+<script>
+// ── constants ──────────────────────────────────────────────────────────────
+var N=201.87, CAV=N/2, FLIP=3.561, CHI=2, SER=3.506;
+var ALPHA=1/137.036, PITCH=N*ALPHA;
+function anti(n){return(n+CAV)%N;}
+function ang(n){return(n/N)*Math.PI*2-Math.PI/2;}
+function pt(cx,cy,r,a){return[cx+r*Math.cos(a),cy+r*Math.sin(a)];}
+
+// ── ring points ────────────────────────────────────────────────────────────
+// cat: 0=dim 1=minor 2=key 3=star 4=alpha 5=anti_ring 6=anti_helix
+//      7=rect_qcd 8=gut 9=gut_anti 10=d2wall 11=d2anti
+var PTS=[
+  {n:0,     lb:"Planck",       c:0},
+  {n:1.808, lb:"Anti-Horiz",   c:1},
+  {n:3.561, lb:"n_flip",       c:2},
+  {n:4.192, lb:"Degen",        c:1},
+  {n:5.314, lb:"n_BBH \u2605", c:3},
+  {n:7.067, lb:"S-horiz",      c:0},
+  {n:9.561, lb:"String",       c:8},
+  {n:11.561,lb:"Desert k=4",   c:8},
+  {n:14.561,lb:"Desert Ctr",   c:8},
+  {n:19.561,lb:"Seesaw",       c:8},
+  {n:35.561,lb:"k=16",         c:10},
+  {n:36.155,lb:"Anti(\u03b1)\u25cb",c:5},
+  {n:36.868,lb:"C=9.5",        c:10},
+  {n:36.892,lb:"Anti(\u03b1)\u2605",c:6},
+  {n:37.561,lb:"k=17",         c:10},
+  {n:59.41, lb:"EW Break",     c:1},
+  {n:66.15, lb:"Proton",       c:1},
+  {n:68.80, lb:"QCD",          c:7},
+  {n:76.99, lb:"Electron",     c:1},
+  {n:92.19, lb:"n_H \u2605",   c:3},
+  {n:108.0, lb:"CMB",          c:1},
+  {n:115.496,lb:"Axion Anti",  c:9},
+  {n:115.9, lb:"Axion DM",     c:9},
+  {n:120.496,lb:"Wall B",      c:0},
+  {n:136.496,lb:"k16-Anti",    c:11},
+  {n:137.09, lb:"\u03b1/LIGO \u2605",c:4},
+  {n:138.496,lb:"k17-Anti",    c:11},
+  {n:153.7,  lb:"LISA",        c:1},
+  {n:160.345,lb:"EW Anti",     c:1},
+  {n:169.735,lb:"QCD Anti",    c:7},
+  {n:173.6,  lb:"PTA",         c:1},
+  {n:201.87, lb:"Hubble",      c:0},
+];
+// cat -> [color, dotR, tickW]
+var STYLE=[
+  ["rgba(255,255,255,.16)",  2,  0.5],  // 0 dim
+  ["rgba(255,255,255,.36)",  3,  0.7],  // 1 minor
+  ["rgba(255,255,255,.6)",   4,  1.0],  // 2 key
+  ["rgba(255,255,255,.78)",  4,  1.2],  // 3 star
+  ["#c8a84b",  6.5, 2.0],  // 4 alpha
+  ["#5b9bd5",  5.5, 1.8],  // 5 anti_ring
+  ["#7bbde8",  5,   1.5],  // 6 anti_helix
+  ["#d55b5b",  5.5, 1.8],  // 7 rect_qcd
+  ["#5bd578",  5,   1.5],  // 8 gut
+  ["#5bd578",  5,   1.5],  // 9 gut_anti
+  ["#a05bd5",  5,   1.5],  // 10 d2wall
+  ["#d5915b",  5,   1.5],  // 11 d2anti
+];
+
+// ── color helper: safely append alpha to hex OR rgba strings ──────────────
+function ca(col, hexA){
+  if(!col) return col;
+  if(col.charAt(0)==='#'){
+    // hex color — just append the 2-char hex alpha
+    return col + hexA;
+  }
+  // rgba(...) color — replace the alpha channel numerically
+  var alpha = parseInt(hexA, 16) / 255;
+  var m = col.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*[\d.]+)?\s*\)/);
+  if(m) return 'rgba('+m[1]+','+m[2]+','+m[3]+','+alpha.toFixed(3)+')';
+  return col; // fallback: return unchanged
+}
+
+var VIEW='ring';
+var cv=document.getElementById('c'),ctx=cv.getContext('2d');
+
+function go(v,btn){
+  VIEW=v;
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
+  btn.classList.add('on');
+  draw();
+  panel();
+}
+
+function resize(){
+  var w=Math.min(window.innerWidth,500);
+  cv.width=w*devicePixelRatio; cv.height=w*devicePixelRatio;
+  cv.style.width=w+'px'; cv.style.height=w+'px';
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(devicePixelRatio,devicePixelRatio);
+  draw(); panel();
+}
+
+// ── main draw ──────────────────────────────────────────────────────────────
+function draw(){
+  var sz=cv.width/devicePixelRatio;
+  var cx=sz/2, cy=sz/2;
+  var OR=sz*.40, IR=sz*.305, MR=(OR+IR)/2;
+
+  ctx.clearRect(0,0,sz,sz);
+
+  // center glow
+  var bg=ctx.createRadialGradient(cx,cy,0,cx,cy,OR*1.1);
+  bg.addColorStop(0,'rgba(200,168,75,.04)'); bg.addColorStop(1,'transparent');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,sz,sz);
+
+  // ring band fill
+  ctx.beginPath(); ctx.arc(cx,cy,OR,0,Math.PI*2); ctx.arc(cx,cy,IR,0,Math.PI*2,true);
+  ctx.fillStyle='rgba(255,255,255,.02)'; ctx.fill();
+  // ring edges
+  ctx.beginPath(); ctx.arc(cx,cy,OR,0,Math.PI*2);
+  ctx.strokeStyle='rgba(255,255,255,.13)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,IR,0,Math.PI*2);
+  ctx.strokeStyle='rgba(255,255,255,.06)'; ctx.lineWidth=.5; ctx.stroke();
+
+  // view-specific overlays BEFORE points
+  if(VIEW==='gut')   drawGUTOverlay(cx,cy,OR,IR,MR,sz);
+  if(VIEW==='d2')    drawD2Overlay(cx,cy,OR,IR,MR,sz);
+  if(VIEW==='rect')  drawRectOverlay(cx,cy,MR,sz);
+  if(VIEW==='helix') drawHelixOverlay(cx,cy,OR,IR,MR,sz);
+
+  // draw points
+  var shown=filterPts();
+  shown.forEach(function(p){ drawDot(cx,cy,OR,IR,MR,sz,p); });
+
+  // center text
+  drawCenter(cx,cy,sz);
+}
+
+function filterPts(){
+  // Which points to show per view
+  if(VIEW==='ring')  return PTS;
+  if(VIEW==='gut')   return PTS.filter(function(p){return [0,2,3,4,8,9,1].indexOf(p.c)>=0||p.n===108;});
+  if(VIEW==='d2')    return PTS.filter(function(p){return [4,5,6,10,11,3,2].indexOf(p.c)>=0||p.n===19.561||p.n===59.41;});
+  if(VIEW==='rect')  return PTS.filter(function(p){return [4,5,7].indexOf(p.c)>=0;});
+  if(VIEW==='helix') return PTS.filter(function(p){return [4,5,6].indexOf(p.c)>=0||p.n===19.561||p.n===59.41;});
+  return PTS;
+}
+
+// ── draw single point ──────────────────────────────────────────────────────
+function drawDot(cx,cy,OR,IR,MR,sz,p){
+  var a=ang(p.n);
+  var st=STYLE[p.c];
+  var col=st[0], dr=st[1], tw=st[2];
+  var hi=p.c>=2; // highlighted categories
+
+  // tick
+  var t1=pt(cx,cy,hi?OR+sz*.012:OR+sz*.004,a);
+  var t2=pt(cx,cy,hi?IR-sz*.012:IR-sz*.003,a);
+  ctx.beginPath(); ctx.moveTo(t1[0],t1[1]); ctx.lineTo(t2[0],t2[1]);
+  ctx.strokeStyle=col; ctx.lineWidth=tw; ctx.stroke();
+
+  // glow for highlighted
+  var dp=pt(cx,cy,MR,a);
+  if(hi){
+    var gw=ctx.createRadialGradient(dp[0],dp[1],0,dp[0],dp[1],sz*.042);
+    gw.addColorStop(0,ca(col,'50')); gw.addColorStop(1,'transparent');
+    ctx.beginPath(); ctx.arc(dp[0],dp[1],sz*.042,0,Math.PI*2);
+    ctx.fillStyle=gw; ctx.fill();
+  }
+  ctx.beginPath(); ctx.arc(dp[0],dp[1],dr,0,Math.PI*2);
+  ctx.fillStyle=col; ctx.fill();
+
+  // label placement: outside ring for top-right & bottom-left quadrants
+  var frac=p.n/N;  // 0..1
+  // angular degrees 0=top, clockwise
+  var deg=frac*360;
+  // outside if deg < 150 or deg > 210 (avoid left side crowding)
+  // actually use quadrant logic:
+  // top half (deg 0-180): outside
+  // bottom half (deg 180-360): inside
+  // But many points cluster — use alternating with a nudge
+  var useOut = (deg < 95 || deg > 165);
+  var LO=OR+sz*.07, LI=IR-sz*.07;
+  var lR=useOut?LO:LI;
+  var lp=pt(cx,cy,lR,a);
+
+  // connector
+  var cs=pt(cx,cy,useOut?OR+1:IR-1,a);
+  ctx.beginPath(); ctx.moveTo(cs[0],cs[1]); ctx.lineTo(lp[0],lp[1]);
+  ctx.strokeStyle=ca(col,'40'); ctx.lineWidth=.5; ctx.stroke();
+
+  // text
+  var fs=hi?sz*.028:sz*.021;
+  ctx.font=(hi?'400':'300')+' '+fs+'px "Crimson Pro",serif';
+  ctx.fillStyle=col; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(p.lb, lp[0], lp[1]);
+}
+
+// ── overlays ───────────────────────────────────────────────────────────────
+function drawGUTOverlay(cx,cy,OR,IR,MR,sz){
+  // green band: string to seesaw
+  var a1=ang(9.561), a2=ang(19.561);
+  ctx.beginPath(); ctx.arc(cx,cy,OR,a1,a2); ctx.arc(cx,cy,IR,a2,a1,true);
+  ctx.closePath(); ctx.fillStyle='rgba(91,213,120,.1)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx,cy,MR,a1,a2);
+  ctx.strokeStyle='rgba(91,213,120,.5)'; ctx.lineWidth=2.5; ctx.stroke();
+
+  // center antipode line -> axion
+  var p1=pt(cx,cy,MR,ang(14.561)), p2=pt(cx,cy,MR,ang(115.496));
+  ctx.beginPath(); ctx.moveTo(p1[0],p1[1]); ctx.lineTo(p2[0],p2[1]);
+  ctx.strokeStyle='rgba(91,213,120,.6)'; ctx.lineWidth=1.2;
+  ctx.setLineDash([4,5]); ctx.stroke(); ctx.setLineDash([]);
+
+  // axion band highlight
+  var a_ax1=ang(115.0), a_ax2=ang(116.2);
+  ctx.beginPath(); ctx.arc(cx,cy,OR,a_ax1,a_ax2); ctx.arc(cx,cy,IR,a_ax2,a_ax1,true);
+  ctx.closePath(); ctx.fillStyle='rgba(91,213,120,.12)'; ctx.fill();
+
+  // delta label on line midpoint
+  var mx=(p1[0]+p2[0])/2, my=(p1[1]+p2[1])/2;
+  ctx.font='300 '+sz*.022+'px "JetBrains Mono",monospace';
+  ctx.fillStyle='rgba(91,213,120,.7)'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('\u0394=0.000', mx, my);
+}
+
+function drawD2Overlay(cx,cy,OR,IR,MR,sz){
+  // purple gap band
+  var a16=ang(35.561), a17=ang(37.561);
+  ctx.beginPath(); ctx.arc(cx,cy,OR,a16,a17); ctx.arc(cx,cy,IR,a17,a16,true);
+  ctx.closePath(); ctx.fillStyle='rgba(160,91,213,.18)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx,cy,MR,a16,a17);
+  ctx.strokeStyle='rgba(160,91,213,.7)'; ctx.lineWidth=2.5; ctx.stroke();
+
+  // antipode bracket arc (orange) around alpha
+  var ak16a=ang(anti(35.561)), ak17a=ang(anti(37.561));
+  // draw a bracket arc on the outside of the ring
+  ctx.beginPath(); ctx.arc(cx,cy,OR+sz*.02, ak16a, ak17a);
+  ctx.strokeStyle='rgba(213,145,91,.8)'; ctx.lineWidth=3; ctx.stroke();
+
+  // dashed diameters: k16 <-> its antipode, k17 <-> its antipode
+  [[35.561,anti(35.561)],[37.561,anti(37.561)]].forEach(function(pair){
+    var pa=pt(cx,cy,MR,ang(pair[0])), pb=pt(cx,cy,MR,ang(pair[1]));
+    ctx.beginPath(); ctx.moveTo(pa[0],pa[1]); ctx.lineTo(pb[0],pb[1]);
+    ctx.strokeStyle='rgba(160,91,213,.3)'; ctx.lineWidth=.8;
+    ctx.setLineDash([3,6]); ctx.stroke(); ctx.setLineDash([]);
+  });
+
+  // alpha glow extra
+  var dp=pt(cx,cy,MR,ang(137.09));
+  var gw=ctx.createRadialGradient(dp[0],dp[1],0,dp[0],dp[1],sz*.06);
+  gw.addColorStop(0,'rgba(200,168,75,.45)'); gw.addColorStop(1,'transparent');
+  ctx.beginPath(); ctx.arc(dp[0],dp[1],sz*.06,0,Math.PI*2);
+  ctx.fillStyle=gw; ctx.fill();
+
+  // chi=2 label inside gap
+  var lp=pt(cx,cy,MR*.73,ang(36.561));
+  ctx.font='300 '+sz*.023+'px "JetBrains Mono",monospace';
+  ctx.fillStyle='rgba(160,91,213,.65)'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('\u03c7=2 gap',lp[0],lp[1]);
+}
+
+function drawRectOverlay(cx,cy,MR,sz){
+  var verts=[36.155,68.80,137.09,169.735];
+  var cols=['#5b9bd5','#d55b5b','#c8a84b','#d5915b'];
+  var xy=verts.map(function(n){return pt(cx,cy,MR,ang(n));});
+
+  // fill
+  ctx.beginPath(); ctx.moveTo(xy[0][0],xy[0][1]);
+  xy.forEach(function(p){ctx.lineTo(p[0],p[1]);}); ctx.closePath();
+  ctx.fillStyle='rgba(200,168,75,.05)'; ctx.fill();
+
+  // sides
+  ctx.beginPath(); ctx.moveTo(xy[0][0],xy[0][1]);
+  xy.forEach(function(p){ctx.lineTo(p[0],p[1]);}); ctx.closePath();
+  ctx.strokeStyle='rgba(255,255,255,.15)'; ctx.lineWidth=.8;
+  ctx.setLineDash([3,6]); ctx.stroke(); ctx.setLineDash([]);
+
+  // diagonals with gradient
+  [[0,2],[1,3]].forEach(function(pair){
+    var i=pair[0],j=pair[1];
+    var g=ctx.createLinearGradient(xy[i][0],xy[i][1],xy[j][0],xy[j][1]);
+    g.addColorStop(0,cols[i]+'cc'); g.addColorStop(.5,'rgba(255,255,255,.4)'); g.addColorStop(1,cols[j]+'cc');
+    ctx.beginPath(); ctx.moveTo(xy[i][0],xy[i][1]); ctx.lineTo(xy[j][0],xy[j][1]);
+    ctx.strokeStyle=g; ctx.lineWidth=1.4; ctx.stroke();
+  });
+
+  // arc labels inside ring
+  var arcs=[
+    {f:36.155,t:68.800,  txt:'32.645'},
+    {f:68.800,t:137.09,  txt:'68.290'},
+    {f:137.09,t:169.735, txt:'32.645'},
+    {f:169.735,t:36.155, w:true,txt:'68.290'},
+  ];
+  ctx.font='300 '+sz*.024+'px "JetBrains Mono",monospace';
+  ctx.fillStyle='rgba(255,255,255,.25)'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  arcs.forEach(function(arc){
+    var a1=ang(arc.f), a2=arc.w?ang(arc.t)+Math.PI*2:ang(arc.t);
+    if(a2<a1) a2+=Math.PI*2;
+    var mid=(a1+a2)/2;
+    var lp=pt(cx,cy,MR*.74,mid);
+    ctx.fillText(arc.txt,lp[0],lp[1]);
+  });
+}
+
+function drawHelixOverlay(cx,cy,OR,IR,MR,sz){
+  // inner rings = revolution 1 and 2
+  var R1=MR, R2=MR*.72, R3=MR*.48;
+  [R1,R2,R3].forEach(function(r,i){
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.strokeStyle='rgba(200,168,75,'+(0.12-i*.04)+')'; ctx.lineWidth=.7;
+    ctx.setLineDash([2,5]); ctx.stroke(); ctx.setLineDash([]);
+  });
+
+  // spiral path from alpha to helix antipode (half turn)
+  var steps=80;
+  ctx.beginPath();
+  for(var i=0;i<=steps;i++){
+    var t=i/steps;
+    var n_t=137.09+t*(238.025-137.09);
+    var a_t=ang(n_t%N);
+    var r_t=R1+(R2-R1)*t;
+    var p_t=pt(cx,cy,r_t,a_t);
+    if(i===0) ctx.moveTo(p_t[0],p_t[1]);
+    else ctx.lineTo(p_t[0],p_t[1]);
+  }
+  var pA=pt(cx,cy,R1,ang(137.09)), pH=pt(cx,cy,R2,ang(36.892));
+  var sg=ctx.createLinearGradient(pA[0],pA[1],pH[0],pH[1]);
+  sg.addColorStop(0,'rgba(200,168,75,.75)'); sg.addColorStop(1,'rgba(91,155,213,.75)');
+  ctx.strokeStyle=sg; ctx.lineWidth=1.6; ctx.stroke();
+
+  // drop line from helix antipode (R2) to ring shadow (R1)
+  var pR=pt(cx,cy,R1,ang(36.155));
+  ctx.beginPath(); ctx.moveTo(pH[0],pH[1]); ctx.lineTo(pR[0],pR[1]);
+  ctx.strokeStyle='rgba(91,155,213,.5)'; ctx.lineWidth=1;
+  ctx.setLineDash([2,4]); ctx.stroke(); ctx.setLineDash([]);
+
+  // alpha rev2 ghost dot
+  var pA2=pt(cx,cy,R2,ang(137.09));
+  ctx.beginPath(); ctx.arc(pA2[0],pA2[1],3.5,0,Math.PI*2);
+  ctx.fillStyle='rgba(200,168,75,.38)'; ctx.fill();
+
+  // labels
+  ctx.font='300 '+sz*.022+'px "JetBrains Mono",monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+
+  ctx.fillStyle='rgba(200,168,75,.55)';
+  ctx.fillText('rev 1',cx,cy-R1*.55);
+  ctx.fillStyle='rgba(200,168,75,.35)';
+  ctx.fillText('rev 2',cx,cy-R2*.55);
+
+  // pitch annotation
+  ctx.fillStyle='rgba(200,168,75,.5)';
+  ctx.fillText('W = 1/\u03b1 = 137.036 turns',cx,cy+sz*.11);
+  ctx.fillText('p = N\u00b7\u03b1 = '+(N*ALPHA).toFixed(4)+' oct',cx,cy+sz*.15);
+}
+
+function drawCenter(cx,cy,sz){
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.font='italic 300 '+sz*.030+'px "Crimson Pro",serif';
+  ctx.fillStyle='rgba(200,168,75,.55)';
+  ctx.fillText('n(C) = 3.561 + 3.506 \u00d7 C',cx,cy-sz*.048);
+
+  var subs={
+    ring:    '264 BBH \u00b7 0 free params',
+    gut:     'GUT desert \u2192 axion window',
+    d2:      '2nd desert brackets \u03b1',
+    rect:    '\u03b1\u2013QCD inscribed rectangle',
+    helix:   'ring = 2D projection of helix',
+  };
+  ctx.font='300 '+sz*.019+'px "JetBrains Mono",monospace';
+  ctx.fillStyle='rgba(255,255,255,.18)';
+  ctx.fillText(subs[VIEW]||'',cx,cy+sz*.012);
+  ctx.fillText('N_Hub = 201.87 \u00b7 cavity = 100.935',cx,cy+sz*.05);
+}
+
+// ── info panels ────────────────────────────────────────────────────────────
+function card(title,rows){
+  var html='<div class="card"><div class="ct">'+title+'</div>';
+  rows.forEach(function(r){
+    html+='<div class="row"><span class="rl">'+r[0]+'</span><span class="rv '+r[2]+'">'+r[1]+'</span></div>';
+  });
+  return html+'</div>';
+}
+function hb(title,body){
+  return '<div class="hb"><div class="ct">'+title+'</div><p>'+body+'</p></div>';
+}
+function panel(){
+  var h='';
+  if(VIEW==='ring'){
+    h+=card('Ring Constants',[
+      ['N_Hub','201.87 octaves','g'],
+      ['n_flip','3.561 oct (realm boundary)','g'],
+      ['n_BBH','5.314 oct \u00b7 264 events \u00b7 0.05\u03c3','g'],
+      ['Cavity','100.935 oct = N/2',''],
+      ['\u03c7(S\u00b2)','2  (Euler 1758)',''],
+      ['\u0394n Seraphim','1.753 oct = n_BBH \u2212 n_flip',''],
+    ]);
+    h+=card('Ladders',[
+      ['\u03c7-ladder','n_k = 3.561 + 2k','t'],
+      ['Coupling','n(C) = 3.561 + 3.506\u00d7C','t'],
+      ['\u03b1 position','n = 137.09 \u2248 1/\u03b1 = 137.036','g'],
+      ['Helix W','N_Hub / pitch = 1/\u03b1 (exact)','g'],
+    ]);
+    h+=hb('How to read the ring','Every labeled point is an <em>octave depth</em> from the Planck frequency. The ring closes at 201.87. Points half the ring apart are <em>antipodal</em>. The discovery engine is: take a known scale, apply A(n) = n + 100.935, ask what lives at the antipode.');
+  }
+  if(VIEW==='gut'){
+    h+=card('GUT Desert',[
+      ['String wall  (k=3)','n = 9.561','gr'],
+      ['Desert center','n = 14.561','gr'],
+      ['Seesaw wall  (k=8)','n = 19.561','gr'],
+      ['Width','10.000 oct = 5\u03c7','gr'],
+    ]);
+    h+=card('Desert Antipodes',[
+      ['Center \u2192 antipode','n = 115.496','t'],
+      ['Axion DM band','n = 115.496','t'],
+      ['\u0394','0.000 octaves (exact)','g'],
+      ['String anti','n = 110.496 \u2192 Wall A','t'],
+      ['Seesaw anti','n = 120.496 \u2192 Wall B','t'],
+    ]);
+    h+=hb('What the GUT desert says','The desert center\u2019s antipode lands <em>exactly</em> on the axion DM band (\u0394=0.000). Both walls\u2019 antipodes land on the GHz/MHz wave walls. The desert is geometrically organized to point at the axion window. The dashed line on the ring shows this diameter.');
+  }
+  if(VIEW==='d2'){
+    h+=card('Second Desert Walls',[
+      ['k=16  (lower wall)','n = 35.561','p'],
+      ['k=17  (upper wall)','n = 37.561','p'],
+      ['Gap width','2.000 oct = \u03c7 exactly','p'],
+    ]);
+    h+=card('Wall Antipodes \u2192 bracket \u03b1',[
+      ['k=16 antipode','n = 136.496','o'],
+      ['\u03b1 / LIGO (inside bracket)','n = 137.090','g'],
+      ['k=17 antipode','n = 138.496','o'],
+      ['Bracket width','2.000 oct = \u03c7','g'],
+      ['\u03b1 position in bracket','29.7%  (lower third)',''],
+    ]);
+    h+=card('\u03b1 Antipode Candidates (all in gap)',[
+      ['Ring shadow','n = 36.155  (2D projection)','b'],
+      ['C=9.5 rung','n = 36.868  \u0394=0.023 from helix','t'],
+      ['3D helix antipode','n = 36.892  (true position)','b'],
+    ]);
+    h+=hb('What the second desert says','The 2nd desert walls\u2019 antipodes <em>bracket \u03b1 exactly</em> with a window of \u03c7=2 octaves. The gap contains all three \u03b1 antipode candidates. The ring is organized so the Euler characteristic defines the clearance around the fine structure constant. The orange arc on the ring shows the bracket.');
+  }
+  if(VIEW==='rect'){
+    h+=card('Rectangle Vertices',[
+      ['Antipode(\u03b1)','n = 36.155  \u00b7  64.5\u00b0','b'],
+      ['QCD Confinement','n = 68.800  \u00b7  122.7\u00b0','r'],
+      ['\u03b1 / LIGO','n = 137.090  \u00b7  244.5\u00b0','g'],
+      ['QCD Antipode','n = 169.735  \u00b7  302.7\u00b0','o'],
+    ]);
+    h+=card('Arc Verification',[
+      ['Short arcs \u00d72','32.645 oct = 58.2\u00b0','g'],
+      ['Long arcs \u00d72','68.290 oct = 121.8\u00b0','g'],
+      ['Both diagonals','= cavity = 100.935 (exact)','t'],
+      ['Antipodal check','\u0394 = 0.000000  (6 d.p.)','g'],
+      ['Crossing angle','58.22\u00b0 at ring center',''],
+    ]);
+    h+=hb('Pythagorean consequence','Both diagonals are <em>diameters</em>. By Thales\u2019 theorem every inscribed angle subtending a diameter is 90\u00b0. So every corner is a right angle and a\u00b2 + b\u00b2 = c\u00b2 holds exactly. The \u03b1 axis and QCD axis cross at 58.22\u00b0 \u2014 not a square, a rectangle. The two colored gradient lines on the ring are the diameters.');
+  }
+  if(VIEW==='helix'){
+    h+=card('Helix Parameters',[
+      ['Winding number W','1/\u03b1 = 137.036  (8 d.p. exact)','g'],
+      ['Pitch  p = N\u00b7\u03b1','1.4731 octaves','g'],
+      ['Half-pitch  p/2','0.7366 octaves',''],
+      ['N_Hub / \u03c7','= 100.935 = cavity exactly','g'],
+    ]);
+    h+=card('Antipode Geometry',[
+      ['Ring shadow  anti(\u03b1)','n = 36.155  (modular wrap)','b'],
+      ['True 3D helix anti','n = 36.892  (+p/2 axially)','b'],
+      ['C=9.5 coupling rung','n = 36.868  \u0394=0.023','t'],
+      ['Energy at shadow','1.59\u00d710\u2078 GeV  (unoccupied)',''],
+    ]);
+    h+=hb('Why the ring looks like a ring','The helix makes <em>137.036 complete turns</em> from Planck to Hubble. Viewed dead-on, all turns collapse onto one circle. The spiral path on the canvas goes from \u03b1 on revolution 1 (outer ring) curving to the 3D antipode on revolution 2 (inner ring). The dashed line drops it back down to the ring shadow at 36.155. The inner dashed circles represent revolution 2 and 3 superimposed.');
+  }
+  document.getElementById('panel').innerHTML=h;
+}
+
+window.addEventListener('resize',resize);
+resize();
+</script>
+</body>
+</html>

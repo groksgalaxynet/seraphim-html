@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Seraphim Thermodynamics</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:#06080e;color:rgba(255,255,255,.85);font-family:'Crimson Pro',serif;min-height:100vh;overflow-x:hidden}
+
+.hdr{padding:14px 12px 0;text-align:center}
+.hdr h1{font-size:clamp(13px,3.8vw,19px);font-weight:300;letter-spacing:.28em;text-transform:uppercase;color:#c8a84b}
+.hdr p{font-family:'JetBrains Mono',monospace;font-size:clamp(7px,1.7vw,9px);color:rgba(255,255,255,.28);margin-top:3px;letter-spacing:.06em}
+
+.tabs{display:flex;gap:2px;padding:9px 10px 0;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:5px 10px;font-family:'JetBrains Mono',monospace;font-size:clamp(7px,1.9vw,9px);letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(255,255,255,.08);background:transparent;color:rgba(255,255,255,.3);cursor:pointer;transition:all .18s;white-space:nowrap}
+.tab.on{background:rgba(200,168,75,.13);border-color:#c8a84b;color:#c8a84b}
+
+.cv-wrap{display:flex;justify-content:center;padding:6px 0 0}
+canvas{display:block}
+
+/* legend strip */
+.legend{display:flex;flex-wrap:wrap;justify-content:center;gap:5px 14px;padding:6px 12px 0;max-width:500px;margin:0 auto}
+.leg{display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:clamp(6px,1.7vw,8px);color:rgba(255,255,255,.4)}
+.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.leg-line{width:18px;height:2px;flex-shrink:0}
+
+.panel{max-width:500px;margin:6px auto 0;padding:0 10px 22px}
+.card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);padding:9px 13px;margin-bottom:3px}
+.card .ct{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px}
+.row{display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:11px}
+.row:last-child{border-bottom:none}
+.rl{color:rgba(255,255,255,.35);font-size:10px}
+.rv{font-family:'JetBrains Mono',monospace;font-size:9px}
+.rv.g{color:#c8a84b}.rv.b{color:#5b9bd5}.rv.r{color:#e05555}.rv.o{color:#d5915b}
+.rv.gr{color:#4ecf88}.rv.t{color:#4ec8d5}.rv.hot{color:#ff6b35}.rv.cold{color:#4eb8ff}
+.rv.eq{color:#a0e060}.rv.neq{color:#e0a060}
+
+.hb{padding:9px 13px;margin-bottom:3px}
+.hb.gold{background:rgba(200,168,75,.05);border:1px solid rgba(200,168,75,.18)}
+.hb.hot{background:rgba(255,107,53,.05);border:1px solid rgba(255,107,53,.2)}
+.hb.cold{background:rgba(78,184,255,.05);border:1px solid rgba(78,184,255,.2)}
+.hb.eq{background:rgba(160,224,96,.05);border:1px solid rgba(160,224,96,.18)}
+.hb .ct{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;margin-bottom:5px}
+.hb.gold .ct{color:rgba(200,168,75,.5)}
+.hb.hot .ct{color:rgba(255,107,53,.55)}
+.hb.cold .ct{color:rgba(78,184,255,.5)}
+.hb.eq .ct{color:rgba(160,224,96,.5)}
+.hb p{font-size:12px;line-height:1.65;color:rgba(255,255,255,.8)}
+.hb p em{font-style:normal}
+.hb.gold p em{color:#c8a84b}
+.hb.hot p em{color:#ff6b35}
+.hb.cold p em{color:#4eb8ff}
+.hb.eq p em{color:#a0e060}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>Seraphim · Thermodynamics on the Ring</h1>
+  <p>n_flip = rigid boundary · known realm = cold reservoir · new realm = hot reservoir</p>
+</div>
+
+<div class="tabs">
+  <button class="tab on"  onclick="go('overview',this)">Overview</button>
+  <button class="tab"     onclick="go('boundary',this)">Boundary</button>
+  <button class="tab"     onclick="go('equilib',this)">Equilibria</button>
+  <button class="tab"     onclick="go('entropy',this)">Entropy</button>
+  <button class="tab"     onclick="go('zeroth',this)">Zeroth Law</button>
+</div>
+
+<div class="cv-wrap"><canvas id="c"></canvas></div>
+<div class="legend" id="leg"></div>
+<div class="panel" id="panel"></div>
+
+<script>
+var N=201.87,CAV=N/2,FLIP=3.561,nBBH=5.314,SER=3.506,CHI=2;
+var ALPHA=1/137.036;
+
+function anti(n){return(n+CAV)%N;}
+function ang(n){return(n/N)*Math.PI*2-Math.PI/2;}
+function pt(cx,cy,r,a){return[cx+r*Math.cos(a),cy+r*Math.sin(a)];}
+function arc(ctx,cx,cy,r,a1,a2,col,lw,dash){
+  ctx.beginPath();ctx.arc(cx,cy,r,ang(a1),ang(a2));
+  ctx.strokeStyle=col;ctx.lineWidth=lw;
+  if(dash)ctx.setLineDash(dash);else ctx.setLineDash([]);
+  ctx.stroke();ctx.setLineDash([]);
+}
+function band(ctx,cx,cy,OR,IR,n1,n2,col){
+  var a1=ang(n1),a2=ang(n2);
+  ctx.beginPath();ctx.arc(cx,cy,OR,a1,a2);ctx.arc(cx,cy,IR,a2,a1,true);
+  ctx.closePath();ctx.fillStyle=col;ctx.fill();
+}
+function diameter(ctx,cx,cy,MR,n1,n2,col,lw,dash){
+  var p1=pt(cx,cy,MR,ang(n1)),p2=pt(cx,cy,MR,ang(n2));
+  ctx.beginPath();ctx.moveTo(p1[0],p1[1]);ctx.lineTo(p2[0],p2[1]);
+  ctx.strokeStyle=col;ctx.lineWidth=lw;
+  if(dash)ctx.setLineDash(dash);else ctx.setLineDash([]);
+  ctx.stroke();ctx.setLineDash([]);
+}
+// safe alpha blend — works for both '#rrggbb' and 'rgba(...)' colors
+function withAlpha(col,a){
+  // if already rgba, replace the alpha value
+  if(col.indexOf('rgba')===0){
+    return col.replace(/,\s*[\d.]+\s*\)/,','+a+')');
+  }
+  // if rgb(...), convert to rgba
+  if(col.indexOf('rgb(')===0){
+    return col.replace('rgb(','rgba(').replace(')',','+a+')');
+  }
+  // hex: append two-digit hex alpha (a is 0..1, convert to hex)
+  var hex=Math.round(a*255).toString(16).padStart(2,'0');
+  return col+hex;
+}
+
+function dot(ctx,cx,cy,r,col,glow,sz){
+  if(glow){
+    var g=ctx.createRadialGradient(cx,cy,0,cx,cy,glow);
+    g.addColorStop(0,withAlpha(col,0.33));g.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(cx,cy,glow,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+  }
+  ctx.beginPath();ctx.arc(cx,cy,sz||5,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+}
+function label(ctx,cx,cy,MR,OR,IR,n,txt,col,fs,outward){
+  var a=ang(n);
+  var frac=n/N,deg=frac*360;
+  var useOut=outward!==undefined?outward:(deg<95||deg>165);
+  var lR=useOut?OR+fs*3.2:IR-fs*3.2;
+  var lp=pt(cx,cy,lR,a);
+  var cs=pt(cx,cy,useOut?OR+1:IR-1,a);
+  ctx.beginPath();ctx.moveTo(cs[0],cs[1]);ctx.lineTo(lp[0],lp[1]);
+  ctx.strokeStyle=withAlpha(col,0.27);ctx.lineWidth=.5;ctx.stroke();
+  ctx.font='300 '+fs+'px "Crimson Pro",serif';
+  ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(txt,lp[0],lp[1]);
+}
+
+var VIEW='overview';
+var cv=document.getElementById('c'),ctx=cv.getContext('2d');
+
+function go(v,btn){
+  VIEW=v;
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
+  btn.classList.add('on');
+  draw();updateLegend();updatePanel();
+}
+
+function resize(){
+  var w=Math.min(window.innerWidth,500);
+  cv.width=w*devicePixelRatio;cv.height=w*devicePixelRatio;
+  cv.style.width=w+'px';cv.style.height=w+'px';
+  ctx.setTransform(1,0,0,1,0,0);ctx.scale(devicePixelRatio,devicePixelRatio);
+  draw();updateLegend();updatePanel();
+}
+
+// ── DRAW ──────────────────────────────────────────────────────────────────
+function draw(){
+  var sz=cv.width/devicePixelRatio;
+  var cx=sz/2,cy=sz/2;
+  var OR=sz*.405,IR=sz*.31,MR=(OR+IR)/2;
+
+  ctx.clearRect(0,0,sz,sz);
+
+  // background glow
+  var bg=ctx.createRadialGradient(cx,cy,0,cx,cy,OR*1.1);
+  bg.addColorStop(0,'rgba(200,168,75,.03)');bg.addColorStop(1,'transparent');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,sz,sz);
+
+  // ── realm coloring ──
+  // HOT realm: n=0 to n_flip (new realm, C<0, de Sitter)
+  // COLD realm: n_flip to N_Hub (known realm, C>0)
+  // Hot = orange tint, Cold = blue tint
+  band(ctx,cx,cy,OR,IR,0,FLIP,'rgba(255,107,53,.08)');
+  band(ctx,cx,cy,OR,IR,FLIP,N,'rgba(78,184,255,.04)');
+
+  // ring band
+  ctx.beginPath();ctx.arc(cx,cy,OR,0,Math.PI*2);ctx.arc(cx,cy,IR,0,Math.PI*2,true);
+  ctx.fillStyle='rgba(255,255,255,.018)';ctx.fill();
+  ctx.beginPath();ctx.arc(cx,cy,OR,0,Math.PI*2);
+  ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=1;ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,IR,0,Math.PI*2);
+  ctx.strokeStyle='rgba(255,255,255,.06)';ctx.lineWidth=.5;ctx.stroke();
+
+  // view overlays
+  if(VIEW==='overview') drawOverview(cx,cy,OR,IR,MR,sz);
+  if(VIEW==='boundary') drawBoundary(cx,cy,OR,IR,MR,sz);
+  if(VIEW==='equilib')  drawEquilib(cx,cy,OR,IR,MR,sz);
+  if(VIEW==='entropy')  drawEntropy(cx,cy,OR,IR,MR,sz);
+  if(VIEW==='zeroth')   drawZeroth(cx,cy,OR,IR,MR,sz);
+
+  drawCenter(cx,cy,sz);
+}
+
+// ── OVERVIEW ──────────────────────────────────────────────────────────────
+function drawOverview(cx,cy,OR,IR,MR,sz){
+  // heat flow arrow from hot realm through boundary into cold
+  // draw a curved arrow from n=2 to n=7 through n_flip
+  ctx.save();
+  for(var i=0;i<3;i++){
+    var ni=1.5+i*.8, na=ang(ni);
+    var p0=pt(cx,cy,MR,na);
+    var gw=ctx.createRadialGradient(p0[0],p0[1],0,p0[0],p0[1],sz*.03);
+    gw.addColorStop(0,'rgba(255,107,53,.35)');gw.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(p0[0],p0[1],sz*.03,0,Math.PI*2);ctx.fillStyle=gw;ctx.fill();
+  }
+  ctx.restore();
+
+  // boundary line at n_flip
+  var af=ang(FLIP);
+  var b1=pt(cx,cy,OR+sz*.02,af),b2=pt(cx,cy,IR-sz*.02,af);
+  ctx.beginPath();ctx.moveTo(b1[0],b1[1]);ctx.lineTo(b2[0],b2[1]);
+  ctx.strokeStyle='rgba(200,168,75,.9)';ctx.lineWidth=2.5;ctx.stroke();
+
+  // BBH ground state marker - tight band
+  band(ctx,cx,cy,OR,IR,5.0,5.6,'rgba(78,184,255,.18)');
+  arc(ctx,cx,cy,MR,5.0,5.6,'rgba(78,184,255,.7)',2);
+
+  // unoccupied slot
+  var pa=pt(cx,cy,MR,ang(36.155));
+  var gq=ctx.createRadialGradient(pa[0],pa[1],0,pa[0],pa[1],sz*.04);
+  gq.addColorStop(0,'rgba(224,160,96,.4)');gq.addColorStop(1,'transparent');
+  ctx.beginPath();ctx.arc(pa[0],pa[1],sz*.04,0,Math.PI*2);ctx.fillStyle=gq;ctx.fill();
+  ctx.beginPath();ctx.arc(pa[0],pa[1],5,0,Math.PI*2);
+  ctx.strokeStyle='rgba(224,160,96,.9)';ctx.lineWidth=1.5;ctx.stroke();
+
+  // all key points
+  var pts=[
+    {n:0,lb:'Planck',c:'rgba(255,255,255,.18)',s:2},
+    {n:FLIP,lb:'n_flip\nBoundary',c:'#c8a84b',s:6},
+    {n:nBBH,lb:'n_BBH\nGround state',c:'#4eb8ff',s:6},
+    {n:5.0,lb:'',c:'rgba(78,184,255,.0)',s:0},
+    {n:36.155,lb:'Anti(\u03b1)\nResidual \u0394S',c:'#e0a060',s:5},
+    {n:68.80,lb:'QCD',c:'rgba(255,255,255,.45)',s:4},
+    {n:92.19,lb:'n_H',c:'rgba(255,255,255,.45)',s:4},
+    {n:115.496,lb:'Axion',c:'rgba(91,213,120,.7)',s:4},
+    {n:137.09,lb:'\u03b1/LIGO',c:'#c8a84b',s:5.5},
+    {n:169.735,lb:'QCD\nAnti',c:'rgba(255,255,255,.45)',s:4},
+    {n:201.87,lb:'Hubble',c:'rgba(255,255,255,.18)',s:2},
+  ];
+  pts.forEach(function(p){
+    if(p.s===0)return;
+    var a=ang(p.n),dp=pt(cx,cy,MR,a);
+    dot(ctx,dp[0],dp[1],0,p.c,p.s>4?sz*.038:0,p.s);
+    if(p.lb){
+      var frac=p.n/N,deg=frac*360;
+      var useOut=deg<95||deg>165;
+      var lR=useOut?OR+sz*.072:IR-sz*.065;
+      var lp=pt(cx,cy,lR,a);
+      var cs=pt(cx,cy,useOut?OR+1:IR-1,a);
+      ctx.beginPath();ctx.moveTo(cs[0],cs[1]);ctx.lineTo(lp[0],lp[1]);
+      ctx.strokeStyle=withAlpha(p.c,0.27);ctx.lineWidth=.5;ctx.stroke();
+      var lines=p.lb.split('\n');
+      var fs=sz*.025;
+      ctx.font='400 '+fs+'px "Crimson Pro",serif';
+      ctx.fillStyle=p.c;ctx.textAlign='center';ctx.textBaseline='middle';
+      lines.forEach(function(l,i){
+        var off=(i-(lines.length-1)/2)*fs*1.3;
+        ctx.fillText(l,lp[0],lp[1]+off);
+      });
+    }
+  });
+
+  // hot/cold realm labels inside ring
+  var hotA=ang(FLIP/2);
+  var lh=pt(cx,cy,MR*.6,hotA);
+  ctx.font='italic 300 '+sz*.027+'px "Crimson Pro",serif';
+  ctx.fillStyle='rgba(255,107,53,.6)';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('HOT',lh[0],lh[1]);
+  ctx.font='300 '+sz*.018+'px "JetBrains Mono",monospace';
+  ctx.fillStyle='rgba(255,107,53,.38)';
+  var lh2=pt(cx,cy,MR*.6,ang(FLIP*.4));
+  ctx.fillText('new realm',lh2[0],lh2[1]+sz*.025);
+
+  var coldA=ang((FLIP+N)*.5);
+  var lc=pt(cx,cy,MR*.62,coldA);
+  ctx.font='italic 300 '+sz*.027+'px "Crimson Pro",serif';
+  ctx.fillStyle='rgba(78,184,255,.5)';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('COLD',lc[0],lc[1]);
+  ctx.font='300 '+sz*.018+'px "JetBrains Mono",monospace';
+  ctx.fillStyle='rgba(78,184,255,.3)';
+  var lc2=pt(cx,cy,MR*.6,ang((FLIP+N)*.52));
+  ctx.fillText('known realm',lc2[0],lc2[1]+sz*.025);
+}
+
+// ── BOUNDARY ──────────────────────────────────────────────────────────────
+function drawBoundary(cx,cy,OR,IR,MR,sz){
+  // rigid boundary highlighted strongly
+  var af=ang(FLIP);
+  // thick radial line
+  var b1=pt(cx,cy,OR+sz*.025,af),b2=pt(cx,cy,IR-sz*.025,af);
+  ctx.beginPath();ctx.moveTo(b1[0],b1[1]);ctx.lineTo(b2[0],b2[1]);
+  ctx.strokeStyle='rgba(200,168,75,1)';ctx.lineWidth=3;ctx.stroke();
+  // glow on boundary
+  var bm=pt(cx,cy,MR,af);
+  var gw=ctx.createRadialGradient(bm[0],bm[1],0,bm[0],bm[1],sz*.08);
+  gw.addColorStop(0,'rgba(200,168,75,.5)');gw.addColorStop(1,'transparent');
+  ctx.beginPath();ctx.arc(bm[0],bm[1],sz*.08,0,Math.PI*2);ctx.fillStyle=gw;ctx.fill();
+
+  // anti-horizon (C = -0.5 derived point)
+  var aah=ang(1.808);
+  var pah=pt(cx,cy,MR,aah);
+  dot(ctx,pah[0],pah[1],0,'#ff6b35',sz*.035,4.5);
+
+  // show what CROSSES the boundary (heat = information, dashed)
+  // and what DOESN'T (work = mechanical coupling, blocked)
+  // draw small arrows
+  function arrowArc(nStart,nEnd,col,inward){
+    var steps=20;
+    ctx.beginPath();
+    for(var i=0;i<=steps;i++){
+      var ni=nStart+(nEnd-nStart)*i/steps;
+      var r=inward?MR+sz*.015*(1-i/steps)*2:MR-sz*.015*(i/steps)*2;
+      var p=pt(cx,cy,r,ang(ni));
+      if(i===0)ctx.moveTo(p[0],p[1]);else ctx.lineTo(p[0],p[1]);
+    }
+    ctx.strokeStyle=col;ctx.lineWidth=1.2;ctx.setLineDash([3,4]);ctx.stroke();ctx.setLineDash([]);
+  }
+  // heat flowing through (information/phase)
+  arrowArc(1.5,5.5,'rgba(200,168,75,.55)',false);
+  arrowArc(6.0,2.0,'rgba(200,168,75,.35)',true);
+
+  // blocked mechanical coupling (X marks)
+  var bx=pt(cx,cy,MR,ang(FLIP));
+  ctx.font='600 '+sz*.04+'px sans-serif';
+  ctx.fillStyle='rgba(255,80,80,.7)';ctx.textAlign='center';ctx.textBaseline='middle';
+
+  // label key points
+  var kpts=[
+    {n:FLIP,   lb:'n_flip\nRigid Boundary',c:'#c8a84b'},
+    {n:1.808,  lb:'Anti-Horizon\nC = \u22120.5',c:'#ff6b35'},
+    {n:nBBH,   lb:'n_BBH\nC = +0.5\nGround State',c:'#4eb8ff'},
+    {n:0,      lb:'Planck',c:'rgba(255,255,255,.3)'},
+  ];
+  kpts.forEach(function(p){
+    var a=ang(p.n),dp=pt(cx,cy,MR,a);
+    dot(ctx,dp[0],dp[1],0,p.c,sz*.04,5.5);
+    var frac=p.n/N,deg=frac*360;
+    var useOut=deg<95||deg>165;
+    var lR=useOut?OR+sz*.075:IR-sz*.07;
+    var lp=pt(cx,cy,lR,a);
+    var cs=pt(cx,cy,useOut?OR+1:IR-1,a);
+    ctx.beginPath();ctx.moveTo(cs[0],cs[1]);ctx.lineTo(lp[0],lp[1]);
+    ctx.strokeStyle=withAlpha(p.c,0.27);ctx.lineWidth=.5;ctx.stroke();
+    var lines=p.lb.split('\n');
+    var fs=sz*.024;
+    ctx.font='400 '+fs+'px "Crimson Pro",serif';
+    ctx.fillStyle=p.c;ctx.textAlign='center';ctx.textBaseline='middle';
+    lines.forEach(function(l,i){
+      var off=(i-(lines.length-1)/2)*fs*1.35;
+      ctx.fillText(l,lp[0],lp[1]+off);
+    });
+  });
+}
+
+// ── EQUILIBRIA ────────────────────────────────────────────────────────────
+function drawEquilib(cx,cy,OR,IR,MR,sz){
+  // show equilibrated pairs as green diameters
+  // show non-equilibrated pair as amber dashed
+  var pairs=[
+    {a:9.561,  b:anti(9.561),  eq:true,  lb:'String \u2194 Wall A'},
+    {a:14.561, b:anti(14.561), eq:true,  lb:'Desert Ctr \u2194 Axion'},
+    {a:19.561, b:anti(19.561), eq:true,  lb:'Seesaw \u2194 Wall B'},
+    {a:68.80,  b:anti(68.80),  eq:true,  lb:'QCD \u2194 QCD Anti'},
+    {a:nBBH,   b:anti(nBBH),   eq:true,  lb:'n_BBH \u2194 CMB zone'},
+    {a:137.09, b:36.155,       eq:false, lb:'\u03b1 \u2194 Anti(\u03b1) [OPEN]'},
+  ];
+
+  pairs.forEach(function(p){
+    var col=p.eq?'rgba(78,207,136,.5)':'rgba(224,160,96,.6)';
+    var lw=p.eq?.9:1.2;
+    var dash=p.eq?[3,6]:[4,4];
+    diameter(ctx,cx,cy,MR,p.a,p.b,col,lw,dash);
+
+    // dots at each end
+    [p.a,p.b].forEach(function(n){
+      var dp=pt(cx,cy,MR,ang(n));
+      dot(ctx,dp[0],dp[1],0,withAlpha(col,1),sz*.032,p.eq?4:5);
+    });
+  });
+
+  // open slot glow
+  var pa=pt(cx,cy,MR,ang(36.155));
+  var gq=ctx.createRadialGradient(pa[0],pa[1],0,pa[0],pa[1],sz*.05);
+  gq.addColorStop(0,'rgba(224,160,96,.5)');gq.addColorStop(1,'transparent');
+  ctx.beginPath();ctx.arc(pa[0],pa[1],sz*.05,0,Math.PI*2);ctx.fillStyle=gq;ctx.fill();
+  ctx.beginPath();ctx.arc(pa[0],pa[1],5,0,Math.PI*2);
+  ctx.strokeStyle='rgba(224,160,96,1)';ctx.lineWidth=2;ctx.stroke();
+
+  // boundary line
+  var af=ang(FLIP);
+  var b1=pt(cx,cy,OR+sz*.015,af),b2=pt(cx,cy,IR-sz*.015,af);
+  ctx.beginPath();ctx.moveTo(b1[0],b1[1]);ctx.lineTo(b2[0],b2[1]);
+  ctx.strokeStyle='rgba(200,168,75,.7)';ctx.lineWidth=2;ctx.stroke();
+
+  // labels for key points
+  var kpts=[
+    {n:FLIP,   lb:'n_flip',      c:'#c8a84b'},
+    {n:36.155, lb:'OPEN\nSlot',  c:'#e0a060'},
+    {n:137.09, lb:'\u03b1',      c:'#c8a84b'},
+    {n:14.561, lb:'Desert',      c:'#4ecf88'},
+    {n:115.496,lb:'Axion',       c:'#4ecf88'},
+    {n:68.80,  lb:'QCD',         c:'#4ecf88'},
+    {n:169.735,lb:'QCD\u2192',   c:'#4ecf88'},
+  ];
+  kpts.forEach(function(p){
+    var a=ang(p.n),dp=pt(cx,cy,MR,a);
+    var frac=p.n/N,deg=frac*360;
+    var useOut=deg<95||deg>165;
+    var lR=useOut?OR+sz*.07:IR-sz*.065;
+    var lp=pt(cx,cy,lR,a);
+    var fs=sz*.025;
+    ctx.font='400 '+fs+'px "Crimson Pro",serif';
+    ctx.fillStyle=p.c;ctx.textAlign='center';ctx.textBaseline='middle';
+    var lines=p.lb.split('\n');
+    lines.forEach(function(l,i){
+      var off=(i-(lines.length-1)/2)*fs*1.3;
+      ctx.fillText(l,lp[0],lp[1]+off);
+    });
+  });
+}
+
+// ── ENTROPY ───────────────────────────────────────────────────────────────
+function drawEntropy(cx,cy,OR,IR,MR,sz){
+  // show entropy distribution around ring
+  // equilibrated pairs = low entropy (green), open slot = high entropy (orange)
+
+  // shade the occupied equilibrium zones green (faint)
+  var eqPairs=[[9.561,anti(9.561)],[14.561,anti(14.561)],[19.561,anti(19.561)],
+               [68.80,anti(68.80)],[nBBH,anti(nBBH)]];
+  eqPairs.forEach(function(p){
+    var w=.8; // half-width in octaves
+    band(ctx,cx,cy,OR,IR,p[0]-w,p[0]+w,'rgba(78,207,136,.1)');
+    band(ctx,cx,cy,OR,IR,p[1]-w,p[1]+w,'rgba(78,207,136,.1)');
+  });
+
+  // BBH cluster - very tight, near zero entropy
+  band(ctx,cx,cy,OR,IR,4.8,5.8,'rgba(78,184,255,.2)');
+  arc(ctx,cx,cy,MR,4.8,5.8,'rgba(78,184,255,.6)',2.5);
+
+  // open slot - high entropy indicator (pulsing orange arc)
+  band(ctx,cx,cy,OR,IR,34.5,38.5,'rgba(224,160,96,.15)');
+  arc(ctx,cx,cy,MR,34.5,38.5,'rgba(224,160,96,.5)',2.5);
+
+  // entropy "temperature" gradient on the ring
+  // hot (new) realm = higher entropy colors
+  var grad=ctx.createConicalGradient?null:null; // not widely supported
+  // instead: draw dashes of varying density
+  for(var i=0;i<12;i++){
+    var nPos=i*(FLIP/12);
+    var dp=pt(cx,cy,OR+sz*.008,ang(nPos));
+    ctx.beginPath();ctx.arc(dp[0],dp[1],sz*.006,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,107,53,'+(0.15+i*.012)+')';ctx.fill();
+  }
+
+  // boundary
+  var af=ang(FLIP);
+  var b1=pt(cx,cy,OR+sz*.018,af),b2=pt(cx,cy,IR-sz*.018,af);
+  ctx.beginPath();ctx.moveTo(b1[0],b1[1]);ctx.lineTo(b2[0],b2[1]);
+  ctx.strokeStyle='rgba(200,168,75,.85)';ctx.lineWidth=2.2;ctx.stroke();
+
+  // labels
+  var lpts=[
+    {n:FLIP,   lb:'n_flip\nBoundary',    c:'#c8a84b'},
+    {n:nBBH,   lb:'n_BBH\nkT\u2248 0',  c:'#4eb8ff'},
+    {n:36.155, lb:'\u0394S residual\nOpen slot',c:'#e0a060'},
+    {n:137.09, lb:'\u03b1/LIGO',         c:'#c8a84b'},
+    {n:14.561, lb:'Desert\n\u0394S\u22480',c:'#4ecf88'},
+    {n:115.496,lb:'Axion\n\u0394S\u22480',c:'#4ecf88'},
+  ];
+  lpts.forEach(function(p){
+    var a=ang(p.n),dp=pt(cx,cy,MR,a);
+    dot(ctx,dp[0],dp[1],0,p.c,sz*.035,4.5);
+    var frac=p.n/N,deg=frac*360;
+    var useOut=deg<95||deg>165;
+    var lR=useOut?OR+sz*.072:IR-sz*.068;
+    var lp=pt(cx,cy,lR,a);
+    var cs=pt(cx,cy,useOut?OR+1:IR-1,a);
+    ctx.beginPath();ctx.moveTo(cs[0],cs[1]);ctx.lineTo(lp[0],lp[1]);
+    ctx.strokeStyle=withAlpha(p.c,0.27);ctx.lineWidth=.5;ctx.stroke();
+    var lines=p.lb.split('\n');
+    var fs=sz*.024;
+    ctx.font='400 '+fs+'px "Crimson Pro",serif';
+    ctx.fillStyle=p.c;ctx.textAlign='center';ctx.textBaseline='middle';
+    lines.forEach(function(l,i){
+      var off=(i-(lines.length-1)/2)*fs*1.3;
+      ctx.fillText(l,lp[0],lp[1]+off);
+    });
+  });
+}
+
+// ── ZEROTH LAW ────────────────────────────────────────────────────────────
+function drawZeroth(cx,cy,OR,IR,MR,sz){
+  // A <-> n_flip <-> B: show triangle of equilibrium
+  // three triples: (GUT desert, n_flip, Axion), (QCD, n_flip, QCDanti), (alpha, n_flip, ?)
+  var triples=[
+    {a:14.561,b:115.496,col:'rgba(78,207,136,.6)',lb:['Desert','Axion'],eq:true},
+    {a:68.80, b:169.735,col:'rgba(91,155,213,.6)', lb:['QCD','QCD Anti'],eq:true},
+    {a:137.09,b:36.155, col:'rgba(224,160,96,.6)', lb:['\u03b1','OPEN'],eq:false},
+  ];
+
+  triples.forEach(function(tr){
+    // lines from each point to n_flip center
+    var bf=pt(cx,cy,MR,ang(FLIP));
+    [tr.a,tr.b].forEach(function(n){
+      var pn=pt(cx,cy,MR,ang(n));
+      ctx.beginPath();ctx.moveTo(bf[0],bf[1]);ctx.lineTo(pn[0],pn[1]);
+      ctx.strokeStyle=tr.col;ctx.lineWidth=tr.eq?.9:1.2;
+      ctx.setLineDash(tr.eq?[3,6]:[4,4]);ctx.stroke();ctx.setLineDash([]);
+    });
+    // diameter between a and b
+    diameter(ctx,cx,cy,MR,tr.a,tr.b,tr.col,tr.eq?.8:1.2,tr.eq?[2,6]:[4,4]);
+
+    // dots
+    [tr.a,tr.b].forEach(function(n,i){
+      var dp=pt(cx,cy,MR,ang(n));
+      if(!tr.eq&&i===1){
+        // open slot circle
+        ctx.beginPath();ctx.arc(dp[0],dp[1],5,0,Math.PI*2);
+        ctx.strokeStyle=tr.col;ctx.lineWidth=2;ctx.stroke();
+      } else {
+        dot(ctx,dp[0],dp[1],0,tr.col,sz*.03,4.5);
+      }
+    });
+  });
+
+  // n_flip central node - big dot
+  var bf=pt(cx,cy,MR,ang(FLIP));
+  var gw=ctx.createRadialGradient(bf[0],bf[1],0,bf[0],bf[1],sz*.06);
+  gw.addColorStop(0,'rgba(200,168,75,.6)');gw.addColorStop(1,'transparent');
+  ctx.beginPath();ctx.arc(bf[0],bf[1],sz*.06,0,Math.PI*2);ctx.fillStyle=gw;ctx.fill();
+  dot(ctx,bf[0],bf[1],0,'#c8a84b',0,7);
+
+  // boundary radial
+  var af=ang(FLIP);
+  var b1=pt(cx,cy,OR+sz*.02,af),b2=pt(cx,cy,IR-sz*.02,af);
+  ctx.beginPath();ctx.moveTo(b1[0],b1[1]);ctx.lineTo(b2[0],b2[1]);
+  ctx.strokeStyle='rgba(200,168,75,.9)';ctx.lineWidth=2.5;ctx.stroke();
+
+  // labels
+  var lpts=[
+    {n:FLIP,   lb:'n_flip\nZeroth Law\nBridge',c:'#c8a84b'},
+    {n:14.561, lb:'Desert',  c:'#4ecf88'},
+    {n:115.496,lb:'Axion',   c:'#4ecf88'},
+    {n:68.80,  lb:'QCD',     c:'#5b9bd5'},
+    {n:169.735,lb:'QCD Anti',c:'#5b9bd5'},
+    {n:137.09, lb:'\u03b1',  c:'#c8a84b'},
+    {n:36.155, lb:'OPEN\n?', c:'#e0a060'},
+  ];
+  lpts.forEach(function(p){
+    var a=ang(p.n);
+    var frac=p.n/N,deg=frac*360;
+    var useOut=deg<95||deg>165;
+    var lR=useOut?OR+sz*.072:IR-sz*.068;
+    var lp=pt(cx,cy,lR,a);
+    var cs=pt(cx,cy,useOut?OR+1:IR-1,a);
+    ctx.beginPath();ctx.moveTo(cs[0],cs[1]);ctx.lineTo(lp[0],lp[1]);
+    ctx.strokeStyle=withAlpha(p.c,0.27);ctx.lineWidth=.5;ctx.stroke();
+    var lines=p.lb.split('\n');
+    var fs=sz*.024;
+    ctx.font='400 '+fs+'px "Crimson Pro",serif';
+    ctx.fillStyle=p.c;ctx.textAlign='center';ctx.textBaseline='middle';
+    lines.forEach(function(l,i){
+      var off=(i-(lines.length-1)/2)*fs*1.35;
+      ctx.fillText(l,lp[0],lp[1]+off);
+    });
+  });
+}
+
+// ── CENTER TEXT ────────────────────────────────────────────────────────────
+function drawCenter(cx,cy,sz){
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  var lines={
+    overview: ['Two systems · rigid boundary','Heat flows: new realm \u2192 known realm'],
+    boundary: ['n_flip = 3.561','Robertson flip = boundary condition'],
+    equilib:  ['Green diameters = equilibrated pairs','Orange dashed = open / not yet settled'],
+    entropy:  ['BBH kT \u2248 0 (ground state)','Anti(\u03b1) = residual entropy \u0394S'],
+    zeroth:   ['If A \u21d4 boundary \u21d4 B  then  A \u21d4 B','n_flip is the zeroth law bridge'],
+  };
+  var ls=lines[VIEW]||['',''];
+  ctx.font='italic 300 '+sz*.028+'px "Crimson Pro",serif';
+  ctx.fillStyle='rgba(200,168,75,.52)';
+  ctx.fillText(ls[0],cx,cy-sz*.042);
+  ctx.font='300 '+sz*.018+'px "JetBrains Mono",monospace';
+  ctx.fillStyle='rgba(255,255,255,.18)';
+  ctx.fillText(ls[1],cx,cy+sz*.01);
+  ctx.fillText('n_flip = '+FLIP+' \u00b7 N_Hub = '+N,cx,cy+sz*.048);
+}
+
+// ── LEGEND ────────────────────────────────────────────────────────────────
+function updateLegend(){
+  var defs={
+    overview:[
+      {t:'dot',col:'#ff6b35',lb:'Hot realm (new, C<0)'},
+      {t:'dot',col:'#4eb8ff',lb:'Cold realm (known, C>0)'},
+      {t:'dot',col:'#c8a84b',lb:'n_flip boundary'},
+      {t:'dot',col:'#4eb8ff',lb:'BBH ground state'},
+      {t:'circle',col:'#e0a060',lb:'Anti(\u03b1) open slot'},
+    ],
+    boundary:[
+      {t:'dot',col:'#c8a84b',lb:'n_flip rigid boundary'},
+      {t:'dot',col:'#ff6b35',lb:'Anti-horizon C=\u22120.5'},
+      {t:'dot',col:'#4eb8ff',lb:'BBH C=+0.5'},
+      {t:'dash',col:'rgba(200,168,75,.7)',lb:'Heat crossing boundary'},
+    ],
+    equilib:[
+      {t:'line',col:'rgba(78,207,136,.7)',lb:'Equilibrated pair'},
+      {t:'dash',col:'rgba(224,160,96,.7)',lb:'Open / not equilibrated'},
+      {t:'circle',col:'#e0a060',lb:'Residual slot 36.155'},
+    ],
+    entropy:[
+      {t:'dot',col:'#4eb8ff',lb:'BBH kT\u22480 (ground state)'},
+      {t:'dot',col:'#4ecf88',lb:'Equilibrated \u0394S\u22480'},
+      {t:'dot',col:'#e0a060',lb:'Residual entropy slot'},
+    ],
+    zeroth:[
+      {t:'line',col:'rgba(78,207,136,.7)',lb:'A \u21d4 B  (equilibrated)'},
+      {t:'dash',col:'rgba(224,160,96,.7)',lb:'\u03b1 \u21d4 ? (open)'},
+      {t:'dot',col:'#c8a84b',lb:'n_flip = zeroth law bridge'},
+    ],
+  };
+  var items=defs[VIEW]||[];
+  var h='';
+  items.forEach(function(d){
+    var icon='';
+    if(d.t==='dot')    icon='<div class="leg-dot" style="background:'+d.col+'"></div>';
+    if(d.t==='circle') icon='<div class="leg-dot" style="background:transparent;border:1.5px solid '+d.col+'"></div>';
+    if(d.t==='line')   icon='<div class="leg-line" style="background:'+d.col+'"></div>';
+    if(d.t==='dash')   icon='<div class="leg-line" style="background:repeating-linear-gradient(90deg,'+d.col+' 0 4px,transparent 4px 8px)"></div>';
+    h+='<div class="leg">'+icon+d.lb+'</div>';
+  });
+  document.getElementById('leg').innerHTML=h;
+}
+
+// ── INFO PANELS ────────────────────────────────────────────────────────────
+function card(t,rows){
+  var h='<div class="card"><div class="ct">'+t+'</div>';
+  rows.forEach(function(r){h+='<div class="row"><span class="rl">'+r[0]+'</span><span class="rv '+r[2]+'">'+r[1]+'</span></div>';});
+  return h+'</div>';
+}
+function hb(cls,t,body){return'<div class="hb '+cls+'"><div class="ct">'+t+'</div><p>'+body+'</p></div>';}
+
+function updatePanel(){
+  var h='';
+  if(VIEW==='overview'){
+    h+=card('The Two Systems',[
+      ['System X (known realm)','C > 0  ·  n > 3.561','cold'],
+      ['System Y (new realm)','C < 0  ·  n < 3.561','hot'],
+      ['Common boundary','n_flip = 3.561 (rigid)','g'],
+      ['Interaction type','Heat only — no mechanical work',''],
+    ]);
+    h+=card('Thermal State',[
+      ['BBH spread (264 events)','0.05\u03c3  \u2248  kT = 0.0025','cold'],
+      ['Known realm status','Near absolute zero — equilibrated','cold'],
+      ['New realm status','Hot reservoir — not yet settled','hot'],
+      ['Anti(\u03b1) at 36.155','Unoccupied — residual \u0394S','neq'],
+    ]);
+    h+=hb('gold','Thermodynamic reading','The textbook describes two possible outcomes when systems share a rigid boundary. <em>Outcome 1</em>: no interaction, states unchanged. <em>Outcome 2</em>: both change until equilibrium. The occupied antipodal pairs are evidence of Outcome 2. The open slot at 36.155 is the system not yet finished settling.');
+  }
+  if(VIEW==='boundary'){
+    h+=card('The Rigid Boundary at n_flip',[
+      ['Position','n = 3.561 octaves','g'],
+      ['Physical meaning','Robertson inequality flips sign',''],
+      ['Thermodynamic type','Rigid = no work, only heat',''],
+      ['What crosses','Phase / uncertainty structure','g'],
+      ['What is blocked','Mechanical C-coupling across sign','r'],
+      ['Anti-horizon (C=\u22120.5)','n = 1.808  (derived)','hot'],
+    ]);
+    h+=hb('hot','Hot reservoir (new realm, C < 0)','The new realm (n < 3.561) is the <em>de Sitter side</em> — repulsive geometry, negative compactness, anti-horizon at n=1.808. In thermodynamic terms this is the hot reservoir. Heat flows outward through n_flip into the known realm.');
+    h+=hb('cold','Cold reservoir (known realm, C > 0)','The known realm (n > 3.561) is the <em>Schwarzschild side</em> — attractive geometry, positive compactness, ground state at n_BBH=5.314. This system has already equilibrated. It is cold — near absolute zero in octave space.');
+  }
+  if(VIEW==='equilib'){
+    h+=card('Equilibrated Pairs (\u0394 \u2248 0)',[
+      ['Desert center \u2194 Axion','\u0394 = 0.000 oct','eq'],
+      ['String wall \u2194 Wall A','\u0394 = 0.000 oct','eq'],
+      ['Seesaw wall \u2194 Wall B','\u0394 = 0.000 oct','eq'],
+      ['QCD \u2194 QCD Antipode','\u0394 = 0.000 oct','eq'],
+      ['n_BBH \u2194 CMB zone','\u0394 = 1.751 oct (\u2248 \u0394n_Ser)','eq'],
+    ]);
+    h+=card('Open Pair (not equilibrated)',[
+      ['\u03b1 (n=137.09)','known, confirmed','g'],
+      ['Anti(\u03b1) ring shadow','n = 36.155  UNOCCUPIED','neq'],
+      ['3D helix antipode','n = 36.892  \u0394=0.023 from C=9.5','neq'],
+      ['Thermodynamic status','System not at max entropy','neq'],
+    ]);
+    h+=hb('eq','Equilibrium condition','Each green diameter represents a zeroth-law equilibrium: two scales that have settled into matching states across the n_flip boundary. The <em>dashed orange line</em> connects \u03b1 to its open antipode — the only unsettled pair. When that pair is filled, the ring reaches maximum entropy.');
+  }
+  if(VIEW==='entropy'){
+    h+=card('Entropy Budget',[
+      ['BBH sector kT_eff','0.0025 oct\u00b2 \u2192 near zero','cold'],
+      ['Equilibrated pairs \u0394S','\u2248 0 each (occupied)','eq'],
+      ['Residual \u0394S','Anti(\u03b1) slot 36.155 (open)','neq'],
+      ['Max entropy condition','All antipodal pairs occupied','g'],
+      ['Current state','Near max — one slot open','neq'],
+    ]);
+    h+=card('Second Law on the Ring',[
+      ['Isolated system','Ring is closed — total S non-decreasing',''],
+      ['Known realm S','Minimised — BBH ground state reached','cold'],
+      ['New realm S','Still elevated — open slot','hot'],
+      ['Direction','System evolving toward max S','g'],
+    ]);
+    h+=hb('gold','What entropy means here','The <em>264 BBH events</em> clustering at n=5.314 with 0.05\u03c3 spread is a near-zero entropy state — the gravitational sector has frozen into its ground state at C=0.5. The entire ring entropy budget is dominated by the single open slot at 36.155. Identifying what lives there = the thermodynamic completion of the framework.');
+  }
+  if(VIEW==='zeroth'){
+    h+=card('Zeroth Law Structure',[
+      ['Statement','If A\u21d4B and B\u21d4C then A\u21d4C',''],
+      ['Bridge B','n_flip = 3.561 boundary','g'],
+      ['Desert \u21d4 n_flip \u21d4 Axion','\u0394 = 0.000  \u2713 equilibrated','eq'],
+      ['QCD \u21d4 n_flip \u21d4 QCD Anti','\u0394 = 0.000  \u2713 equilibrated','eq'],
+      ['\u03b1 \u21d4 n_flip \u21d4 Anti(\u03b1)','36.155 OPEN  \u2717 not complete','neq'],
+    ]);
+    h+=card('Implication',[
+      ['Desert and axion','Are in mutual thermal equilibrium','eq'],
+      ['QCD and QCD Anti','Are in mutual thermal equilibrium','eq'],
+      ['\u03b1 and Anti(\u03b1)','Are NOT yet in equilibrium','neq'],
+      ['O5 prediction','Anti(\u03b1) scale should be detectable','g'],
+    ]);
+    h+=hb('gold','The zeroth law prediction','The zeroth law says equilibrium is transitive. n_flip is the <em>universal bridge</em>. Every confirmed antipodal pair satisfies the zeroth law automatically. The \u03b1 pair is the exception — and therefore the <em>prediction</em>: something must exist at n\u224836.87\u201336.89 to complete the equilibrium chain. The framework demands it by the zeroth law. O5 and future high-energy experiments are the test.');
+  }
+  document.getElementById('panel').innerHTML=h;
+}
+
+window.addEventListener('resize',resize);
+resize();
+</script>
+</body>
+</html>

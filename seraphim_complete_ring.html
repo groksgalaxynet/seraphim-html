@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seraphim Complete Ring — All Three Papers</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  --bg: #05060c;
+  --ring-stroke: #2a3060;
+  --ring-glow: rgba(100,120,220,0.08);
+  --text: #b8bcd8;
+  --dim: #4a4f6a;
+  --gold: #ffb300;
+  --cyan: #4fc3f7;
+  --teal: #80cbc4;
+  --red: #ef5350;
+  --pink: #f48fb1;
+  --purple: #b388ff;
+  --green: #66bb6a;
+  --orange: #ff7043;
+  --blue: #42a5f5;
+  --lime: #c6ff00;
+  --amber: #ffd54f;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 67% 12%, rgba(255,255,255,.25) 0%, transparent 100%),
+    radial-gradient(1px 1px at 35% 48%, rgba(255,255,255,.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 82% 33%, rgba(255,255,255,.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 91% 72%, rgba(255,255,255,.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 8% 85%, rgba(255,255,255,.15) 0%, transparent 100%),
+    radial-gradient(1px 1px at 55% 95%, rgba(255,255,255,.2) 0%, transparent 100%);
+  pointer-events: none; z-index: 0;
+}
+
+header {
+  position: relative; z-index: 2;
+  text-align: center;
+  padding: 1.8rem 1rem 0.8rem;
+  border-bottom: 1px solid rgba(42,48,96,0.5);
+}
+header h1 {
+  font-family: 'Playfair Display', serif;
+  font-weight: 400;
+  font-size: clamp(1.2rem, 2.8vw, 1.9rem);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #e8eaff;
+}
+header .sub {
+  font-size: .55rem;
+  color: var(--dim);
+  letter-spacing: .1em;
+  margin-top: .3rem;
+}
+
+.controls {
+  position: relative; z-index: 3;
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid rgba(42,48,96,0.3);
+  background: rgba(5,6,12,0.9);
+}
+.controls button {
+  background: rgba(42,48,96,0.3);
+  border: 1px solid rgba(42,48,96,0.6);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.55rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 3px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+}
+.controls button:hover, .controls button.active {
+  background: rgba(255,179,0,0.15);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.ring-container {
+  position: relative; z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  min-height: calc(100vh - 120px);
+}
+
+svg#ring {
+  max-width: 900px;
+  max-height: 900px;
+  width: 100%;
+  height: auto;
+}
+
+.tooltip {
+  position: fixed;
+  background: rgba(13,15,28,0.96);
+  border: 1px solid rgba(255,179,0,0.4);
+  color: var(--text);
+  font-size: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 100;
+  max-width: 280px;
+  line-height: 1.5;
+  display: none;
+  backdrop-filter: blur(8px);
+}
+.tooltip .tt-title {
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 0.2rem;
+}
+.tooltip .tt-n { color: var(--cyan); }
+.tooltip .tt-conf { color: var(--green); font-size: 0.5rem; }
+.tooltip .tt-paper { color: var(--pink); font-size: 0.48rem; margin-top: 0.15rem; }
+
+.legend {
+  position: relative; z-index: 3;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.4rem;
+  padding: 0.8rem 1.2rem;
+  border-top: 1px solid rgba(42,48,96,0.3);
+  background: rgba(5,6,12,0.95);
+  font-size: 0.5rem;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.legend-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.legend-line {
+  width: 16px; height: 2px;
+  flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>The Seraphim Octave Ring</h1>
+  <p class="sub">COMPLETE MAP — v18.3 · Paper 2 v16 · Degeneracy v3 · 201.87 Octaves · n(C) = 3.561 + 3.506 × C</p>
+</header>
+
+<div class="controls">
+  <button class="active" data-layer="scales">Physical Scales</button>
+  <button data-layer="grids">Grid 1 & 2</button>
+  <button data-layer="chi">χ(S²) Ladder</button>
+  <button data-layer="antipodes">Antipodal Pairs</button>
+  <button data-layer="desert">Desert & Opposite</button>
+  <button data-layer="bands">Binary Bands</button>
+  <button data-layer="casimir">Casimir Window</button>
+  <button class="active" data-layer="labels">Labels</button>
+</div>
+
+<div class="ring-container">
+  <svg id="ring" viewBox="0 0 900 900" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<div class="legend" id="legend"></div>
+
+<script>
+const N_HUB = 201.87;
+const CX = 450, CY = 450, R = 360, R_inner = 280;
+const n_flip = 3.561, n_BBH = 5.314, slope = 3.506;
+const delta_n = n_BBH - n_flip; // 1.753
+const chi = 2; // χ(S²)
+
+// Convert n to angle (0=top, clockwise)
+function nToAngle(n) {
+  return (n / N_HUB) * 2 * Math.PI - Math.PI / 2;
+}
+function nToXY(n, r) {
+  const a = nToAngle(n);
+  return [CX + r * Math.cos(a), CY + r * Math.sin(a)];
+}
+
+// All physical scales from all three papers
+const scales = [
+  // Paper 1 (v18.3) confirmed
+  { n: 0, label: "Planck Wall", cat: "planck", color: "#ffffff", paper: "v18.3", conf: "Known", desc: "n = 0, ν = ν_Planck" },
+  { n: 0.055, label: "Vacuum Mode k=0", cat: "grid1", color: "#ffb300", paper: "Paper 2", conf: "Derived", desc: "C = −1.0, double de Sitter saturation" },
+  { n: 1.808, label: "Anti-Horizon", cat: "ds", color: "#4fc3f7", paper: "Paper 2", conf: "Derived", desc: "C = −0.5, de Sitter from Robertson" },
+  { n: 3.561, label: "n_flip", cat: "flip", color: "#80cbc4", paper: "v18.3", conf: "CONFIRMED", desc: "Singularity / realm boundary, C = 0" },
+  { n: 4.192, label: "Degeneracy n≈4.19", cat: "degen", color: "#f48fb1", paper: "Degen v3", conf: "Measured", desc: "BBH η=0.09 = BNS APR4, GW190814" },
+  { n: 4.98, label: "Reduced Planck Mass", cat: "planck", color: "#90a4ae", paper: "Paper 2", conf: "Known", desc: "2.4×10¹⁸ GeV" },
+  { n: 5.314, label: "n_BBH ★", cat: "bbh", color: "#ffb300", paper: "v18.3", conf: "CONFIRMED", desc: "264 events, 0.05σ, C = 0.5" },
+  { n: 7.067, label: "Super-horizon k=4", cat: "grid1", color: "#ffb300", paper: "Paper 2", conf: "Derived", desc: "C = +1.0, double BH saturation" },
+  { n: 9.58, label: "String Scale", cat: "desert", color: "#ff7043", paper: "Paper 2", conf: "Known", desc: "Desert lower wall, χ k=3, ~10¹⁷ GeV" },
+  { n: 11.56, label: "Desert k=4", cat: "desert_int", color: "#b71c1c", paper: "Paper 2", conf: "Excluded", desc: "Interior rung — BK18 excluded" },
+  { n: 14.561, label: "Desert Center", cat: "desert_c", color: "#ef5350", paper: "Paper 2", conf: "Derived", desc: "C_eff ≈ π (0.13%), χ-wave zero crossing" },
+  { n: 19.55, label: "Seesaw Scale", cat: "seesaw", color: "#ef9a9a", paper: "Paper 2", conf: "Suggestive", desc: "Desert upper wall, Grid 2 k=11, ~10¹⁴ GeV" },
+  { n: 59.41, label: "EW Symmetry Breaking", cat: "ew", color: "#ba68c8", paper: "Paper 2", conf: "Known", desc: "Z/Higgs ~100 GeV, χ k=28" },
+  { n: 66.15, label: "Proton Mass", cat: "qcd", color: "#9575cd", paper: "Paper 2", conf: "Known", desc: "938 MeV" },
+  { n: 68.80, label: "QCD Confinement", cat: "qcd", color: "#9575cd", paper: "Paper 2", conf: "Known", desc: "~150 MeV, quarks → hadrons" },
+  { n: 76.99, label: "Electron Mass", cat: "qed", color: "#7986cb", paper: "Paper 2", conf: "Known", desc: "0.511 MeV" },
+  { n: 92.19, label: "n_H Condensation ★", cat: "hcond", color: "#66bb6a", paper: "Paper 2", conf: "CONFIRMED", desc: "H ionization ceiling, 0 violations/118 elements" },
+  { n: 108.0, label: "CMB Peak", cat: "cmb", color: "#26c6da", paper: "Paper 2", conf: "Known", desc: "2.725 K, photon decoupling" },
+  { n: 110.496, label: "Wall A (10 GHz)", cat: "opp_wave", color: "#ff8a65", paper: "Paper 2", conf: "Suggestive", desc: "Grid 1 m=63 Δ=0.002, ARCADE 2 edge" },
+  { n: 115.496, label: "Axion Antipode", cat: "axion", color: "#c6ff00", paper: "Paper 2", conf: "Suggestive", desc: "χ k=56, 1.25 μeV, QCD axion window" },
+  { n: 115.9, label: "Axion DM (~μeV)", cat: "dm", color: "#a5d6a7", paper: "Paper 2", conf: "Candidate", desc: "Axion dark matter window" },
+  { n: 120.496, label: "Wall B (10 MHz)", cat: "opp_wave", color: "#ff8a65", paper: "Paper 2", conf: "Speculative", desc: "Cosmic radio opacity floor" },
+  { n: 137.09, label: "LIGO / 1/α ★", cat: "ligo", color: "#ffd54f", paper: "v18.3", conf: "Confirmed", desc: "~100 Hz, 1/α_QED = 137.036" },
+  { n: 153.7, label: "LISA Band", cat: "lisa", color: "#42a5f5", paper: "Paper 2", conf: "Known", desc: "mHz GW band" },
+  { n: 160.345, label: "EW Antipode", cat: "antipode", color: "#e1bee7", paper: "Paper 2", conf: "Suggestive", desc: "9.99 μHz, AION/AEDGE target" },
+  { n: 169.735, label: "QCD Antipode", cat: "antipode", color: "#d1c4e9", paper: "Paper 2", conf: "Suggestive", desc: "14.89 nHz, NANOGrav band" },
+  { n: 173.6, label: "PTA Band", cat: "pta", color: "#b39ddb", paper: "Paper 2", conf: "Known", desc: "nHz GW background" },
+  { n: 201.87, label: "Hubble Horizon", cat: "hubble", color: "#78909c", paper: "Paper 2", conf: "Known", desc: "Dark energy / Λ" },
+];
+
+// Antipodal pairs
+const antipodes = [
+  { from: 5.314, to: 5.314 + 100.935, label: "BBH → CMB (+Δn)", color: "#ffb300" },
+  { from: 92.19, to: 92.19 + 100.935, label: "n_H → Galaxy/WDM", color: "#66bb6a" },
+  { from: 14.561, to: 115.496, label: "Desert Center → Axion", color: "#ef5350" },
+  { from: 9.561, to: 110.496, label: "String → Wall A", color: "#ff7043" },
+  { from: 19.561, to: 120.496, label: "Seesaw → Wall B", color: "#ef9a9a" },
+  { from: 59.41, to: 160.345, label: "EW → AION band", color: "#ba68c8" },
+  { from: 68.80, to: 169.735, label: "QCD → NANOGrav", color: "#9575cd" },
+];
+
+// Binary population bands (Degen paper)
+const bands = [
+  { n_lo: 5.02, n_hi: 5.61, label: "BBH Main Band", color: "#ffb300" },
+  { n_lo: 4.15, n_hi: 5.02, label: "BBH Asymmetric", color: "#ff8f00" },
+  { n_lo: 4.05, n_hi: 4.37, label: "BNS Cluster", color: "#66bb6a" },
+  { n_lo: 3.62, n_hi: 4.10, label: "NSBH Band", color: "#42a5f5" },
+  { n_lo: 3.561, n_hi: 3.575, label: "EMRI Floor", color: "#b388ff" },
+];
+
+// Desert zone
+const desert = { n_lo: 9.561, n_hi: 19.561, color: "rgba(183,28,28,0.12)" };
+const opp_wave = { n_lo: 110.496, n_hi: 120.496, color: "rgba(255,138,101,0.08)" };
+
+// Casimir window
+const casimir = { n_lo: 89, n_hi: 96, color: "rgba(102,187,106,0.08)" };
+
+// Layer visibility
+const layers = { scales: true, grids: false, chi: false, antipodes: false, desert: false, bands: false, casimir: false, labels: true };
+
+const svg = document.getElementById('ring');
+const tooltip = document.getElementById('tooltip');
+
+function createSVGEl(tag, attrs) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+function arcPath(r, n1, n2, ccw=false) {
+  const a1 = nToAngle(n1), a2 = nToAngle(n2);
+  const [x1, y1] = [CX + r*Math.cos(a1), CY + r*Math.sin(a1)];
+  const [x2, y2] = [CX + r*Math.cos(a2), CY + r*Math.sin(a2)];
+  const span = ((n2 - n1 + N_HUB) % N_HUB) / N_HUB;
+  const large = span > 0.5 ? 1 : 0;
+  const sweep = ccw ? 0 : 1;
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${large} ${sweep} ${x2} ${y2}`;
+}
+
+function render() {
+  svg.innerHTML = '';
+
+  // Defs
+  const defs = createSVGEl('defs', {});
+  // Glow filter
+  const filter = createSVGEl('filter', { id: 'glow' });
+  const blur = createSVGEl('feGaussianBlur', { stdDeviation: '3', result: 'blur' });
+  const merge = createSVGEl('feMerge', {});
+  merge.appendChild(createSVGEl('feMergeNode', { in: 'blur' }));
+  merge.appendChild(createSVGEl('feMergeNode', { in: 'SourceGraphic' }));
+  filter.appendChild(blur);
+  filter.appendChild(merge);
+  defs.appendChild(filter);
+  svg.appendChild(defs);
+
+  // Background ring
+  svg.appendChild(createSVGEl('circle', { cx: CX, cy: CY, r: R, fill: 'none', stroke: '#1a1e3a', 'stroke-width': '40', opacity: '0.3' }));
+  svg.appendChild(createSVGEl('circle', { cx: CX, cy: CY, r: R, fill: 'none', stroke: '#2a3060', 'stroke-width': '2', opacity: '0.6' }));
+  svg.appendChild(createSVGEl('circle', { cx: CX, cy: CY, r: R - 20, fill: 'none', stroke: '#2a3060', 'stroke-width': '1', opacity: '0.3' }));
+  svg.appendChild(createSVGEl('circle', { cx: CX, cy: CY, r: R + 20, fill: 'none', stroke: '#2a3060', 'stroke-width': '1', opacity: '0.3' }));
+
+  // Cavity center marker
+  const [ccx, ccy] = nToXY(N_HUB/2, 0);
+  svg.appendChild(createSVGEl('circle', { cx: CX, cy: CY, r: 3, fill: '#4a4f6a', opacity: '0.5' }));
+
+  // === DESERT ZONE ===
+  if (layers.desert) {
+    // Desert arc
+    const dArc = createSVGEl('path', {
+      d: arcPath(R, desert.n_lo, desert.n_hi),
+      fill: 'none', stroke: 'rgba(239,83,80,0.25)', 'stroke-width': '38',
+      'stroke-linecap': 'butt', class: 'layer-desert'
+    });
+    svg.appendChild(dArc);
+    // Desert label
+    const [dx, dy] = nToXY((desert.n_lo + desert.n_hi)/2, R + 50);
+    const dtxt = createSVGEl('text', { x: dx, y: dy, fill: '#ef5350', 'font-size': '8', 'text-anchor': 'middle', 'font-family': 'JetBrains Mono', opacity: '0.8' });
+    dtxt.textContent = 'GUT DESERT (10 oct)';
+    svg.appendChild(dtxt);
+
+    // Opposite wave arc
+    const oArc = createSVGEl('path', {
+      d: arcPath(R, opp_wave.n_lo, opp_wave.n_hi),
+      fill: 'none', stroke: 'rgba(255,138,101,0.15)', 'stroke-width': '38',
+      'stroke-linecap': 'butt'
+    });
+    svg.appendChild(oArc);
+    const [ox, oy] = nToXY((opp_wave.n_lo + opp_wave.n_hi)/2, R + 50);
+    const otxt = createSVGEl('text', { x: ox, y: oy, fill: '#ff8a65', 'font-size': '8', 'text-anchor': 'middle', 'font-family': 'JetBrains Mono', opacity: '0.8' });
+    otxt.textContent = 'OPPOSITE WAVE (10 oct)';
+    svg.appendChild(otxt);
+  }
+
+  // === CASIMIR WINDOW ===
+  if (layers.casimir) {
+    const cArc = createSVGEl('path', {
+      d: arcPath(R, casimir.n_lo, casimir.n_hi),
+      fill: 'none', stroke: 'rgba(102,187,106,0.2)', 'stroke-width': '38',
+      'stroke-linecap': 'butt'
+    });
+    svg.appendChild(cArc);
+    const [cx2, cy2] = nToXY((casimir.n_lo + casimir.n_hi)/2, R + 50);
+    const ctxt = createSVGEl('text', { x: cx2, y: cy2, fill: '#66bb6a', 'font-size': '7', 'text-anchor': 'middle', 'font-family': 'JetBrains Mono', opacity: '0.8' });
+    ctxt.textContent = 'CASIMIR / METALLIZATION';
+    svg.appendChild(ctxt);
+  }
+
+  // === BINARY BANDS ===
+  if (layers.bands) {
+    bands.forEach((b, i) => {
+      const bArc = createSVGEl('path', {
+        d: arcPath(R - 30 - i*10, b.n_lo, b.n_hi),
+        fill: 'none', stroke: b.color, 'stroke-width': '6',
+        'stroke-linecap': 'round', opacity: '0.6'
+      });
+      svg.appendChild(bArc);
+      // tiny label
+      const mid = (b.n_lo + b.n_hi) / 2;
+      const [bx, by] = nToXY(mid, R - 55 - i*10);
+      if (layers.labels) {
+        const btxt = createSVGEl('text', { x: bx, y: by, fill: b.color, 'font-size': '5.5', 'text-anchor': 'middle', 'font-family': 'JetBrains Mono', opacity: '0.9' });
+        btxt.textContent = b.label;
+        svg.appendChild(btxt);
+      }
+    });
+    // Degeneracy zone marker
+    const [dz_x, dz_y] = nToXY(4.192, R - 25);
+    svg.appendChild(createSVGEl('line', { x1: dz_x, y1: dz_y - 8, x2: dz_x, y2: dz_y + 8, stroke: '#f48fb1', 'stroke-width': '1.5', 'stroke-dasharray': '3,2', opacity: '0.8' }));
+  }
+
+  // === CHI LADDER ===
+  if (layers.chi) {
+    for (let k = 0; k <= 100; k++) {
+      const n = n_flip + k * chi;
+      if (n > N_HUB) break;
+      const [x1, y1] = nToXY(n, R - 18);
+      const [x2, y2] = nToXY(n, R + 18);
+      const important = [0, 3, 8, 28, 56, 83].includes(k);
+      svg.appendChild(createSVGEl('line', {
+        x1, y1, x2, y2,
+        stroke: important ? '#ef5350' : 'rgba(239,83,80,0.15)',
+        'stroke-width': important ? '1.5' : '0.5',
+        opacity: important ? '0.8' : '0.4'
+      }));
+      if (important && layers.labels) {
+        const [lx, ly] = nToXY(n, R + 32);
+        const lt = createSVGEl('text', { x: lx, y: ly, fill: '#ef5350', 'font-size': '5', 'text-anchor': 'middle', 'font-family': 'JetBrains Mono', opacity: '0.7' });
+        lt.textContent = `χk=${k}`;
+        svg.appendChild(lt);
+      }
+    }
+  }
+
+  // === GRID 1 & 2 ===
+  if (layers.grids) {
+    // Grid 1 (phase 0.055, step 1.753)
+    for (let m = 0; m <= 115; m++) {
+      const n = 0.055 + m * delta_n;
+      if (n > N_HUB) break;
+      const [x1, y1] = nToXY(n, R - 14);
+      const [x2, y2] = nToXY(n, R + 14);
+      const key = [0,1,2,3,38,63].includes(m);
+      svg.appendChild(createSVGEl('line', {
+        x1, y1, x2, y2,
+        stroke: key ? '#ffb300' : 'rgba(255,179,0,0.08)',
+        'stroke-width': key ? '1.5' : '0.3',
+        opacity: key ? '0.7' : '0.3'
+      }));
+    }
+    // Grid 2 (phase 0.275, step 1.753)
+    for (let m = 0; m <= 115; m++) {
+      const n = 0.275 + m * delta_n;
+      if (n > N_HUB) break;
+      const [x1, y1] = nToXY(n, R - 10);
+      const [x2, y2] = nToXY(n, R + 10);
+      const key = [11, 110].includes(m);
+      svg.appendChild(createSVGEl('line', {
+        x1, y1, x2, y2,
+        stroke: key ? '#4fc3f7' : 'rgba(79,195,247,0.06)',
+        'stroke-width': key ? '1.5' : '0.3',
+        opacity: key ? '0.7' : '0.3'
+      }));
+    }
+  }
+
+  // === ANTIPODAL PAIRS ===
+  if (layers.antipodes) {
+    antipodes.forEach(ap => {
+      const [x1, y1] = nToXY(ap.from, R);
+      const to_n = ap.to % N_HUB;
+      const [x2, y2] = nToXY(to_n, R);
+      svg.appendChild(createSVGEl('line', {
+        x1, y1, x2, y2,
+        stroke: ap.color, 'stroke-width': '0.8',
+        'stroke-dasharray': '4,3', opacity: '0.4'
+      }));
+    });
+  }
+
+  // === SCALE MARKERS ===
+  if (layers.scales) {
+    scales.forEach(s => {
+      const n = s.n % N_HUB;
+      const [x, y] = nToXY(n, R);
+      const isConfirmed = s.conf === 'CONFIRMED';
+      const isStar = s.label.includes('★');
+      const dotR = isStar ? 6 : (isConfirmed ? 5 : 3.5);
+
+      // Glow for confirmed
+      if (isConfirmed || isStar) {
+        svg.appendChild(createSVGEl('circle', {
+          cx: x, cy: y, r: dotR + 4,
+          fill: s.color, opacity: '0.12', filter: 'url(#glow)'
+        }));
+      }
+
+      const dot = createSVGEl('circle', {
+        cx: x, cy: y, r: dotR,
+        fill: s.color, opacity: isConfirmed ? '0.95' : '0.7',
+        cursor: 'pointer', 'data-idx': scales.indexOf(s)
+      });
+      dot.addEventListener('mouseenter', (e) => showTooltip(e, s));
+      dot.addEventListener('mouseleave', hideTooltip);
+      svg.appendChild(dot);
+
+      // Label
+      if (layers.labels) {
+        const lr = R + (isStar ? 48 : 38);
+        const [lx, ly] = nToXY(n, lr);
+        // Determine text anchor based on angle
+        const angle = nToAngle(n);
+        const deg = (angle * 180 / Math.PI + 360) % 360;
+        let anchor = 'middle';
+        if (deg > 30 && deg < 150) anchor = 'start';
+        else if (deg > 210 && deg < 330) anchor = 'end';
+
+        const label = createSVGEl('text', {
+          x: lx, y: ly,
+          fill: s.color, 'font-size': isStar ? '7' : '5.5',
+          'text-anchor': anchor,
+          'font-family': 'JetBrains Mono',
+          opacity: isConfirmed ? '0.9' : '0.65',
+          'font-weight': isStar ? '700' : '400'
+        });
+        label.textContent = s.label;
+        svg.appendChild(label);
+
+        // n-value
+        const [nx, ny] = nToXY(n, lr + 9);
+        const nLabel = createSVGEl('text', {
+          x: nx, y: ny,
+          fill: s.color, 'font-size': '4.5',
+          'text-anchor': anchor,
+          'font-family': 'JetBrains Mono',
+          opacity: '0.4'
+        });
+        nLabel.textContent = `n=${s.n}`;
+        svg.appendChild(nLabel);
+      }
+    });
+  }
+
+  // Center text
+  const centerText = [
+    { text: 'n(C) = 3.561 + 3.506 × C', y: CY - 20, size: '9', color: '#e8eaff', weight: '700' },
+    { text: `N_Hub = ${N_HUB} octaves`, y: CY, size: '6.5', color: '#4a4f6a', weight: '400' },
+    { text: '264 BBH events · 0 free parameters', y: CY + 14, size: '5.5', color: '#4a4f6a', weight: '300' },
+    { text: 'Cavity Center = 100.935', y: CY + 28, size: '5', color: '#4a4f6a', weight: '300' },
+  ];
+  centerText.forEach(t => {
+    const txt = createSVGEl('text', { x: CX, y: t.y, fill: t.color, 'font-size': t.size, 'text-anchor': 'middle', 'font-family': 'JetBrains Mono', 'font-weight': t.weight });
+    txt.textContent = t.text;
+    svg.appendChild(txt);
+  });
+
+  // Octave ticks (every 10)
+  for (let n = 0; n <= 200; n += 10) {
+    const [x1, y1] = nToXY(n, R + 20);
+    const [x2, y2] = nToXY(n, R + 24);
+    svg.appendChild(createSVGEl('line', { x1, y1, x2, y2, stroke: '#4a4f6a', 'stroke-width': '0.5', opacity: '0.4' }));
+    if (n % 20 === 0) {
+      const [tx, ty] = nToXY(n, R + 30);
+      const tt = createSVGEl('text', { x: tx, y: ty, fill: '#4a4f6a', 'font-size': '4', 'text-anchor': 'middle', 'font-family': 'JetBrains Mono', opacity: '0.4' });
+      tt.textContent = n;
+      svg.appendChild(tt);
+    }
+  }
+
+  renderLegend();
+}
+
+function showTooltip(e, s) {
+  const tt = document.getElementById('tooltip');
+  tt.innerHTML = `
+    <div class="tt-title">${s.label}</div>
+    <div><span class="tt-n">n = ${s.n}</span> · C_eff = ${((s.n - n_flip) / slope).toFixed(3)}</div>
+    <div class="tt-conf">${s.conf}</div>
+    <div>${s.desc}</div>
+    <div class="tt-paper">Source: ${s.paper}</div>
+  `;
+  tt.style.display = 'block';
+  tt.style.left = (e.clientX + 14) + 'px';
+  tt.style.top = (e.clientY - 10) + 'px';
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').style.display = 'none';
+}
+
+function renderLegend() {
+  const leg = document.getElementById('legend');
+  const items = [
+    { color: '#ffb300', label: '★ n_BBH = 5.314 (264 events, CONFIRMED)' },
+    { color: '#80cbc4', label: '★ n_flip = 3.561 (realm boundary)' },
+    { color: '#66bb6a', label: '★ n_H = 92.19 (condensation ceiling)' },
+    { color: '#ffd54f', label: 'LIGO band / 1/α = 137.036' },
+    { color: '#4fc3f7', label: 'Anti-horizon C = −0.5 (DERIVED)' },
+    { color: '#f48fb1', label: 'Degeneracy zone n ≈ 4.19 (Degen v3)' },
+    { color: '#ef5350', label: 'GUT Desert / χ(S²) ladder' },
+    { color: '#ba68c8', label: 'EW / QCD phase transitions' },
+    { color: '#26c6da', label: 'CMB peak (108.0)' },
+    { color: '#ff8a65', label: 'Opposite wave walls' },
+    { color: '#c6ff00', label: 'Axion antipode (1.25 μeV)' },
+    { color: '#b39ddb', label: 'PTA / LISA GW bands' },
+  ];
+  leg.innerHTML = items.map(i => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${i.color}"></div>
+      <span>${i.label}</span>
+    </div>
+  `).join('');
+}
+
+// Button handlers
+document.querySelectorAll('.controls button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const layer = btn.dataset.layer;
+    layers[layer] = !layers[layer];
+    btn.classList.toggle('active');
+    render();
+  });
+});
+
+render();
+</script>
+</body>
+</html>

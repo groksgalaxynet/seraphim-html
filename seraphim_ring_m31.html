@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seraphim Ring · M31 Dust Context</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap');
+
+  :root {
+    --bg:     #07080f;
+    --bg2:    #0d0f1c;
+    --ring:   #1e2240;
+    --text:   #c8cce8;
+    --dim:    #5a5f80;
+    --bbh:    #ffb300;
+    --cmb:    #26c6da;
+    --hcond:  #66bb6a;
+    --desert: #b71c1c;
+    /* M31 colors */
+    --helga:  #4db87a;
+    --wise:   #9b72e8;
+    --elem:   #c9a84c;
+  }
+
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Space Mono',monospace;
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  body::before {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      radial-gradient(1px 1px at 15% 20%,rgba(255,255,255,.4) 0%,transparent 100%),
+      radial-gradient(1px 1px at 73% 8%, rgba(255,255,255,.3) 0%,transparent 100%),
+      radial-gradient(1px 1px at 41% 55%,rgba(255,255,255,.25)0%,transparent 100%),
+      radial-gradient(1px 1px at 88% 37%,rgba(255,255,255,.35)0%,transparent 100%),
+      radial-gradient(1px 1px at 5%  80%,rgba(255,255,255,.2) 0%,transparent 100%),
+      radial-gradient(1px 1px at 62% 91%,rgba(255,255,255,.3) 0%,transparent 100%);
+  }
+
+  header {
+    position:relative; z-index:2;
+    text-align:center;
+    padding:2rem 1rem .8rem;
+    border-bottom:1px solid var(--ring);
+  }
+  header h1 {
+    font-family:'Crimson Pro',serif; font-weight:300;
+    font-size:clamp(1.3rem,3vw,2rem);
+    letter-spacing:.14em; text-transform:uppercase; color:#fff;
+  }
+  header p { font-size:.62rem; color:var(--dim); letter-spacing:.1em; margin-top:.3rem; }
+
+  .tabs {
+    display:flex; justify-content:center; gap:.5rem;
+    padding:.8rem 1rem; position:relative; z-index:2;
+  }
+  .tab {
+    background:none; border:1px solid var(--ring);
+    color:var(--dim); font-family:'Space Mono',monospace;
+    font-size:.58rem; letter-spacing:.1em; padding:.35rem .8rem;
+    cursor:pointer; transition:all .2s; text-transform:uppercase;
+  }
+  .tab:hover  { border-color:var(--bbh); color:var(--bbh); }
+  .tab.active { border-color:var(--bbh); color:var(--bbh); background:rgba(255,179,0,.06); }
+
+  .panel { display:none; position:relative; z-index:1; }
+  .panel.active { display:flex; }
+
+  .ring-panel {
+    flex-direction:column; align-items:center; padding:1rem;
+  }
+  .ring-wrap {
+    position:relative;
+    width:min(90vw,600px);
+    aspect-ratio:1;
+  }
+  canvas.rc { width:100%; height:100%; display:block; }
+
+  /* symmetry panel */
+  #panel-sym {
+    flex-direction:column;
+    align-items:center;
+    padding:1rem 1.5rem;
+  }
+  .sym-canvas-wrap {
+    width:min(96vw, 860px);
+    height:260px;
+    position:relative;
+  }
+  canvas.sc { width:100%; height:100%; display:block; }
+
+  .sym-notes {
+    max-width:860px; width:100%;
+    display:grid;
+    grid-template-columns: repeat(auto-fit,minmax(200px,1fr));
+    gap:.7rem;
+    margin-top:1.2rem;
+  }
+  .note-card {
+    background:var(--bg2);
+    border:1px solid var(--ring);
+    padding:.8rem 1rem;
+    font-size:.57rem;
+    line-height:1.9;
+  }
+  .note-card .nc-title {
+    font-size:.52rem; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--dim); margin-bottom:.4rem;
+  }
+  .note-card .hi { color:var(--bbh); }
+  .note-card .g  { color:var(--helga); }
+  .note-card .v  { color:var(--wise); }
+  .note-card .r  { color:#ef9a9a; }
+
+  .legend {
+    display:flex; flex-wrap:wrap; gap:.5rem 1rem;
+    padding:.8rem 1rem; justify-content:center;
+    border-top:1px solid var(--ring);
+    margin-top:.8rem; position:relative; z-index:2;
+  }
+  .li { display:flex; align-items:center; gap:.35rem; font-size:.55rem; color:var(--dim); }
+  .ld { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .lb { width:14px; height:8px; flex-shrink:0; border-radius:1px; }
+
+  #tooltip {
+    position:fixed; background:#0d0f1c;
+    border:1px solid #2a3060;
+    padding:.5rem .8rem; font-size:.62rem; line-height:1.6;
+    pointer-events:none; z-index:100; max-width:220px;
+    display:none; box-shadow:0 0 20px rgba(79,195,247,.15);
+  }
+  #tooltip .name  { color:#fff; font-weight:700; font-size:.66rem; }
+  #tooltip .n-val { color:var(--bbh); }
+  #tooltip .desc  { color:var(--dim); margin-top:.2rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Seraphim Octave Ring · M31 Dust Context</h1>
+  <p>n = log₂(ν_P / ν) · Circumference = 201.87 oct · HELGA + WISE dust zones added</p>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="showPanel('full',event)">Full Ring</button>
+  <button class="tab" onclick="showPanel('sector',event)">Dust Sector (n 74–115)</button>
+  <button class="tab" onclick="showPanel('sym',event)">Symmetry Analysis</button>
+</div>
+
+<div id="panel-full" class="panel ring-panel active">
+  <div class="ring-wrap"><canvas id="c-full" class="rc"></canvas></div>
+</div>
+
+<div id="panel-sector" class="panel ring-panel">
+  <div class="ring-wrap" style="width:min(90vw,640px)"><canvas id="c-sector" class="rc"></canvas></div>
+</div>
+
+<div id="panel-sym" class="panel">
+  <div class="sym-canvas-wrap"><canvas id="c-sym" class="sc"></canvas></div>
+  <div class="sym-notes" id="symNotes"></div>
+</div>
+
+<div class="legend">
+  <div class="li"><div class="lb" style="background:rgba(77,184,122,.35)"></div>HELGA cold dust (M31)</div>
+  <div class="li"><div class="lb" style="background:rgba(155,114,232,.25)"></div>WISE warm emission (M31)</div>
+  <div class="li"><div class="lb" style="background:rgba(201,168,76,.18)"></div>Element condensation zone</div>
+  <div class="li"><div class="lb" style="background:rgba(183,28,28,.45)"></div>GUT desert</div>
+  <div class="li"><div class="lb" style="background:rgba(255,179,0,.2)"></div>BBH band</div>
+  <div class="li"><div class="ld" style="background:#66bb6a"></div>n_H = 92.19</div>
+  <div class="li"><div class="ld" style="background:#26c6da"></div>CMB / cavity center</div>
+  <div class="li"><div class="ld" style="background:#4db87a"></div>HELGA components</div>
+  <div class="li"><div class="ld" style="background:#9b72e8"></div>WISE bands</div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+// ── CONSTANTS ─────────────────────────────────────────────────────────────────
+const N_HUB   = 201.87;
+const N_FLIP  = 3.561;
+const SLOPE   = 3.506;
+const N_H     = 92.19;
+const NU_P    = 1.8549e43;
+const C_LIGHT = 2.99792458e14; // μm/s
+
+function wavToN(um) { return Math.log2(NU_P / (C_LIGHT / um)); }
+
+// ── EXISTING RING SCALES ──────────────────────────────────────────────────────
+const SCALES = [
+  { n:0.055,   label:'Grid 1\nvacuum',        color:'#aaaaaa', r:6,  desc:'Grid 1 k=0 vacuum mode.' },
+  { n:0.275,   label:'Grid 2\nvacuum',        color:'#aaaaff', r:6,  desc:'Grid 2 k=0 vacuum.' },
+  { n:1.808,   label:'n_anti\n(de Sitter)',   color:'#4fc3f7', r:9,  desc:'Anti-horizon. C=−0.5.' },
+  { n:3.561,   label:'n_flip',                color:'#80cbc4', r:9,  desc:'Realm boundary. C=0.' },
+  { n:5.314,   label:'n_BBH ★\n264 events',  color:'#ffb300', r:13, desc:'BBH mergers. C=+0.5. Confirmed 264 events.' },
+  { n:9.58,    label:'String\nwall',          color:'#ff7043', r:8,  desc:'Desert lower wall.' },
+  { n:14.565,  label:'Desert\ncenter',        color:'#b71c1c', r:5,  desc:'GUT Desert midpoint.' },
+  { n:19.55,   label:'Seesaw\nwall',          color:'#ef9a9a', r:8,  desc:'Seesaw / right-handed neutrino.' },
+  { n:59.41,   label:'Electroweak',           color:'#ba68c8', r:7,  desc:'EW symmetry breaking ~100 GeV.' },
+  { n:68.8,    label:'QCD',                   color:'#9575cd', r:6,  desc:'QCD confinement ~150 MeV.' },
+  { n:92.19,   label:'n_H\nceiling',          color:'#66bb6a', r:9,  desc:'H condensation ceiling. C_eff=25.28.' },
+  { n:100.935, label:'Cavity\ncenter',        color:'#444488', r:6,  desc:'Ring equator / cavity center.' },
+  { n:108.0,   label:'CMB',                   color:'#26c6da', r:10, desc:'CMB photon decoupling. T=2.725K.' },
+  { n:201.87,  label:'Hubble\n= Planck wrap', color:'#cccccc', r:7,  desc:'Ring closure.' },
+];
+
+// ── M31 HELGA COMPONENTS ──────────────────────────────────────────────────────
+const HELGA = [
+  { n:103.1431, label:'Cold disk\n16K',   color:'#4db87a', r:7, desc:'Cold diffuse disk T=16K. C_eff=28.40.' },
+  { n:102.6877, label:'Warm disk\n22K',   color:'#52c9a0', r:6, desc:'Warm diffuse disk T=22K. C_eff=28.27.' },
+  { n:101.6433, label:'SF ring\n45K',     color:'#68d4b0', r:7, desc:'Star-forming ring T=45K. C_eff=27.98.' },
+  { n:101.0008, label:'HII dust\n70K',    color:'#7dd4b8', r:6, desc:'HII region dust T=70K. C_eff=27.79.' },
+  { n:100.5013, label:'PDR\n100K',        color:'#92d4c0', r:6, desc:'PDR boundary T=100K. C_eff=27.65.' },
+];
+const HELGA_LO = 100.5013, HELGA_HI = 103.1431;
+const HELGA_CENTER = (HELGA_LO + HELGA_HI) / 2;  // ~101.82
+
+// ── WISE BANDS ────────────────────────────────────────────────────────────────
+const WISE_DOTS = [
+  { n: wavToN(3.4),  label:'W1\n3.4μm',  color:'#4dd4d4', r:5, desc:'NEOWISE W1 3.4μm — stellar mass tracer.' },
+  { n: wavToN(4.6),  label:'W2\n4.6μm',  color:'#9b72e8', r:5, desc:'NEOWISE W2 4.6μm — stellar+hot dust.' },
+  { n: wavToN(12.0), label:'W3\n12μm',   color:'#c9a84c', r:6, desc:'AllWISE W3 12μm — PAH + VSG dust.' },
+  { n: wavToN(22.0), label:'W4\n22μm',   color:'#e87a4d', r:5, desc:'AllWISE W4 22μm — warm HII dust.' },
+];
+const WISE_LO = Math.min(...WISE_DOTS.map(w=>w.n));
+const WISE_HI = Math.max(...WISE_DOTS.map(w=>w.n));
+const WISE_CENTER = (WISE_LO + WISE_HI) / 2;
+
+// Element condensation zone
+const ELEM_LO = 91.3, ELEM_HI = 94.0;
+const ELEM_CENTER = (ELEM_LO + ELEM_HI) / 2;  // ~92.65
+
+// ── GEOMETRY ──────────────────────────────────────────────────────────────────
+function nToAngle(n, circ=N_HUB) {
+  return Math.PI/2 - (n/circ)*2*Math.PI;
+}
+function nToXY(n, r, cx, cy, circ=N_HUB) {
+  const a = nToAngle(n, circ);
+  return [cx + r*Math.cos(a), cy - r*Math.sin(a)];
+}
+function arcFill(ctx, cx, cy, rIn, rOut, n1, n2, color, circ=N_HUB) {
+  const ca1 = -(nToAngle(n1, circ));
+  const ca2 = -(nToAngle(n2, circ));
+  ctx.beginPath();
+  ctx.arc(cx, cy, rOut, ca1, ca2, false);
+  ctx.arc(cx, cy, rIn,  ca2, ca1, true);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+function drawDot(ctx, cx, cy, R, s, glow=false) {
+  if (glow) {
+    const g = ctx.createRadialGradient(cx,cy,0,cx,cy,s.r*3);
+    g.addColorStop(0, s.color+'55'); g.addColorStop(1,'transparent');
+    ctx.beginPath(); ctx.arc(cx,cy,s.r*3,0,Math.PI*2);
+    ctx.fillStyle=g; ctx.fill();
+  }
+  ctx.beginPath(); ctx.arc(cx,cy,s.r,0,Math.PI*2);
+  ctx.fillStyle=s.color;
+  ctx.strokeStyle='#00000088'; ctx.lineWidth=1;
+  ctx.fill(); ctx.stroke();
+}
+
+// ── FULL RING ─────────────────────────────────────────────────────────────────
+function drawFull() {
+  const canvas = document.getElementById('c-full');
+  const dpr = window.devicePixelRatio||1;
+  const sz  = canvas.parentElement.offsetWidth;
+  canvas.width = sz*dpr; canvas.height = sz*dpr;
+  canvas.style.width=sz+'px'; canvas.style.height=sz+'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const cx=sz/2, cy=sz/2, R=sz*0.38;
+
+  ctx.clearRect(0,0,sz,sz);
+
+  // base ring
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+  ctx.strokeStyle='#1e2240'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,R*.88,0,Math.PI*2);
+  ctx.strokeStyle='#12152a'; ctx.lineWidth=.8; ctx.stroke();
+
+  // zones
+  arcFill(ctx,cx,cy,R*.87,R, 0,3.616,        'rgba(79,195,247,0.10)');
+  arcFill(ctx,cx,cy,R*.87,R, 9.58,19.55,     'rgba(183,28,28,0.38)');
+  arcFill(ctx,cx,cy,R*.87,R, 4.5,6.0,        'rgba(255,179,0,0.18)');
+  arcFill(ctx,cx,cy,R*.87,R, ELEM_LO,ELEM_HI,'rgba(201,168,76,0.15)');
+  arcFill(ctx,cx,cy,R*.87,R, WISE_LO,WISE_HI,'rgba(155,114,232,0.18)');
+  arcFill(ctx,cx,cy,R*.87,R, HELGA_LO,HELGA_HI,'rgba(77,184,122,0.22)');
+
+  // ticks
+  for(let n=0; n<=N_HUB; n+=20) {
+    const [x1,y1]=nToXY(n,R*.87,cx,cy);
+    const [x2,y2]=nToXY(n,R+4,cx,cy);
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
+    ctx.strokeStyle='#2a2f50';ctx.lineWidth=.7;ctx.stroke();
+    const [xl,yl]=nToXY(n,R+14,cx,cy);
+    ctx.fillStyle='#2a2f50';ctx.font="8.5px 'Space Mono',monospace";
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(n,xl,yl);
+  }
+
+  // antipodal connector BBH ↔ CMB
+  const [bx,by]=nToXY(5.314,R*.5,cx,cy);
+  const [cx2,cy2]=nToXY(108.0,R*.5,cx,cy);
+  ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(cx2,cy2);
+  ctx.strokeStyle='rgba(255,179,0,0.2)';ctx.lineWidth=.8;
+  ctx.setLineDash([4,6]);ctx.stroke();ctx.setLineDash([]);
+
+  // symmetry brackets — dashed lines from n_H to HELGA center and WISE center
+  const [hx,hy]=nToXY(N_H,R*.72,cx,cy);
+  const [hgx,hgy]=nToXY(HELGA_CENTER,R*.72,cx,cy);
+  const [wx,wy]=nToXY(WISE_CENTER,R*.72,cx,cy);
+  ctx.strokeStyle='rgba(201,168,76,.35)';ctx.lineWidth=1;
+  ctx.setLineDash([3,5]);
+  ctx.beginPath();ctx.moveTo(hx,hy);ctx.lineTo(hgx,hgy);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(hx,hy);ctx.lineTo(wx,wy);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // centre text
+  ctx.fillStyle='#aaaacc';ctx.font="italic 11px 'Crimson Pro',serif";
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('n(C) = 3.561 + 3.506×C',cx,cy+6);
+  ctx.fillStyle='#3a3f60';ctx.font="9px 'Space Mono',monospace";
+  ctx.fillText('circumference = 201.87 oct',cx,cy+20);
+  ctx.fillStyle='rgba(201,168,76,.4)';
+  ctx.fillText('M31 dust zones added',cx,cy-8);
+
+  // existing scale dots
+  SCALES.forEach(s => {
+    const [dx,dy]=nToXY(s.n,R,cx,cy);
+    drawDot(ctx,dx,dy,R,s,s.r>=9);
+  });
+
+  // HELGA dots
+  HELGA.forEach(s => {
+    const [dx,dy]=nToXY(s.n,R,cx,cy);
+    drawDot(ctx,dx,dy,R,s,false);
+  });
+
+  // WISE dots
+  WISE_DOTS.forEach(s => {
+    const [dx,dy]=nToXY(s.n,R,cx,cy);
+    drawDot(ctx,dx,dy,R,s,false);
+  });
+
+  // labels for key points
+  const labelled=[5.314,3.561,9.58,19.55,92.19,100.935,108.0,201.87];
+  SCALES.filter(s=>labelled.includes(s.n)).forEach(s=>{
+    const lr=R+22+(s.r>8?6:0);
+    const [lx,ly]=nToXY(s.n,lr,cx,cy);
+    const lines=s.label.split('\n');
+    ctx.font=`${s.r>8?8.5:7.5}px 'Space Mono',monospace`;
+    ctx.fillStyle=s.color;
+    ctx.textAlign=lx<cx?'right':(Math.abs(lx-cx)<20?'center':'left');
+    ctx.textBaseline=ly<cy?'bottom':'top';
+    lines.forEach((line,i)=>ctx.fillText(line,lx,ly+i*9));
+  });
+
+  // hit regions
+  const allDots=[...SCALES,...HELGA,...WISE_DOTS];
+  canvas._hits=allDots.map(s=>{const [dx,dy]=nToXY(s.n,R,cx,cy);return{x:dx,y:dy,r:s.r+6,s};});
+}
+
+// ── SECTOR RING (n 74–115) ────────────────────────────────────────────────────
+function drawSector() {
+  const canvas=document.getElementById('c-sector');
+  const dpr=window.devicePixelRatio||1;
+  const sz=canvas.parentElement.offsetWidth;
+  canvas.width=sz*dpr; canvas.height=sz*dpr;
+  canvas.style.width=sz+'px'; canvas.style.height=sz+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const cx=sz/2, cy=sz/2, R=sz*0.38;
+  const CIRC=115-74+41;  // sector spans n 74–115, mapped to ~40-oct window
+
+  // We display the ring showing only the dust sector
+  // Use a zoomed circumference so this sector fills the ring
+  const ZOOM_CIRC=44; // 44 octave window centered on the sector
+  const ZOOM_OFF=72;  // starting n value
+
+  function sn(n) { return n - ZOOM_OFF; } // shift to local coords
+
+  ctx.clearRect(0,0,sz,sz);
+
+  // base ring
+  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);
+  ctx.strokeStyle='#1e2240';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,R*.88,0,Math.PI*2);
+  ctx.strokeStyle='#12152a';ctx.lineWidth=.8;ctx.stroke();
+
+  // zones (in local coords)
+  arcFill(ctx,cx,cy,R*.87,R,sn(ELEM_LO),sn(ELEM_HI),'rgba(201,168,76,.22)',ZOOM_CIRC);
+  arcFill(ctx,cx,cy,R*.87,R,sn(WISE_LO),sn(WISE_HI),'rgba(155,114,232,.22)',ZOOM_CIRC);
+  arcFill(ctx,cx,cy,R*.87,R,sn(HELGA_LO),sn(HELGA_HI),'rgba(77,184,122,.28)',ZOOM_CIRC);
+
+  // symmetry arc between WISE center ↔ n_H ↔ HELGA center at inner radius
+  const IR=R*.68;
+  const [whx,why]=nToXY(sn(WISE_CENTER),IR,cx,cy,ZOOM_CIRC);
+  const [nhx,nhy]=nToXY(sn(N_H),IR,cx,cy,ZOOM_CIRC);
+  const [hgx,hgy]=nToXY(sn(HELGA_CENTER),IR,cx,cy,ZOOM_CIRC);
+
+  // Left gap bracket
+  ctx.strokeStyle='rgba(155,114,232,.5)';ctx.lineWidth=1.5;
+  ctx.setLineDash([3,4]);
+  ctx.beginPath();ctx.moveTo(whx,why);ctx.lineTo(nhx,nhy);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Right gap bracket
+  ctx.strokeStyle='rgba(77,184,122,.5)';ctx.lineWidth=1.5;
+  ctx.setLineDash([3,4]);
+  ctx.beginPath();ctx.moveTo(nhx,nhy);ctx.lineTo(hgx,hgy);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Gap labels
+  function midXY(x1,y1,x2,y2,t=.5){return[x1+(x2-x1)*t,y1+(y2-y1)*t];}
+  const [mlx,mly]=midXY(whx,why,nhx,nhy);
+  const [mrx,mry]=midXY(nhx,nhy,hgx,hgy);
+  ctx.font="7.5px 'Space Mono',monospace"; ctx.textAlign='center';
+
+  // offset labels slightly outward
+  function offLabel(x,y,cx,cy,off=18){
+    const dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy);
+    return[x+dx/d*off, y+dy/d*off];
+  }
+  const [lolx,loly]=offLabel(mlx,mly,cx,cy);
+  const [lorx,lory]=offLabel(mrx,mry,cx,cy);
+
+  ctx.fillStyle='rgba(155,114,232,.8)';
+  ctx.fillText('Δn≈10.2',lolx,loly);
+  ctx.fillStyle='rgba(77,184,122,.8)';
+  ctx.fillText('Δn≈9.6',lorx,lory);
+
+  // desert width annotation near ring center
+  ctx.fillStyle='rgba(201,168,76,.5)';
+  ctx.font="7px 'Space Mono',monospace";
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('Desert width ≈ 9.97 oct',cx,cy-18);
+  ctx.fillText('← both gaps ~10 oct →',cx,cy-5);
+  ctx.fillStyle='rgba(77,184,122,.3)';
+  ctx.fillText('cavity center = 100.935',cx,cy+10);
+  ctx.fillText('falls inside HELGA zone',cx,cy+22);
+
+  // tick labels every 5
+  for(let n=75; n<=114; n+=5) {
+    const ln=sn(n);
+    const [x1,y1]=nToXY(ln,R*.9,cx,cy,ZOOM_CIRC);
+    const [x2,y2]=nToXY(ln,R*1.0,cx,cy,ZOOM_CIRC);
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
+    ctx.strokeStyle='#2a2f50';ctx.lineWidth=.6;ctx.stroke();
+    const [xl,yl]=nToXY(ln,R*1.1,cx,cy,ZOOM_CIRC);
+    ctx.fillStyle='#404060';ctx.font="8px 'Space Mono',monospace";
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(n,xl,yl);
+  }
+
+  // existing scale dots in range
+  const inRange=SCALES.filter(s=>s.n>=ZOOM_OFF&&s.n<=ZOOM_OFF+ZOOM_CIRC);
+  inRange.forEach(s=>{
+    const [dx,dy]=nToXY(sn(s.n),R,cx,cy,ZOOM_CIRC);
+    drawDot(ctx,dx,dy,R,s,s.r>=9);
+    const lr=R+22;
+    const [lx,ly]=nToXY(sn(s.n),lr,cx,cy,ZOOM_CIRC);
+    const lines=s.label.split('\n');
+    ctx.font="7.5px 'Space Mono',monospace";
+    ctx.fillStyle=s.color;
+    ctx.textAlign=lx<cx?'right':(Math.abs(lx-cx)<20?'center':'left');
+    ctx.textBaseline=ly<cy?'bottom':'top';
+    lines.forEach((l,i)=>ctx.fillText(l,lx,ly+i*9));
+  });
+
+  // HELGA dots
+  HELGA.forEach(s=>{
+    const [dx,dy]=nToXY(sn(s.n),R,cx,cy,ZOOM_CIRC);
+    drawDot(ctx,dx,dy,R,s,false);
+    const lr=R+20;
+    const [lx,ly]=nToXY(sn(s.n),lr,cx,cy,ZOOM_CIRC);
+    ctx.font="7.5px 'Space Mono',monospace";ctx.fillStyle=s.color;
+    ctx.textAlign=lx<cx?'right':(Math.abs(lx-cx)<20?'center':'left');
+    ctx.textBaseline=ly<cy?'bottom':'top';
+    s.label.split('\n').forEach((l,i)=>ctx.fillText(l,lx,ly+i*9));
+  });
+
+  // WISE dots
+  WISE_DOTS.forEach(s=>{
+    const [dx,dy]=nToXY(sn(s.n),R,cx,cy,ZOOM_CIRC);
+    drawDot(ctx,dx,dy,R,s,false);
+    const lr=R+20;
+    const [lx,ly]=nToXY(sn(s.n),lr,cx,cy,ZOOM_CIRC);
+    ctx.font="7.5px 'Space Mono',monospace";ctx.fillStyle=s.color;
+    ctx.textAlign=lx<cx?'right':(Math.abs(lx-cx)<20?'center':'left');
+    ctx.textBaseline=ly<cy?'bottom':'top';
+    s.label.split('\n').forEach((l,i)=>ctx.fillText(l,lx,ly+i*9));
+  });
+
+  // hit regions
+  const allD=[...inRange,...HELGA,...WISE_DOTS];
+  canvas._hits=allD.map(s=>{const[dx,dy]=nToXY(sn(s.n),R,cx,cy,ZOOM_CIRC);return{x:dx,y:dy,r:s.r+6,s};});
+}
+
+// ── SYMMETRY LINEAR AXIS ──────────────────────────────────────────────────────
+function drawSym() {
+  const canvas=document.getElementById('c-sym');
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.parentElement.clientWidth;
+  const H=260;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+
+  ctx.fillStyle='#090c18';ctx.fillRect(0,0,W,H);
+
+  const N_LO=72, N_HI=112;
+  const PL=60,PR=30,PT=40,PB=50;
+  const axW=W-PL-PR;
+
+  function nx(n){return PL+(n-N_LO)/(N_HI-N_LO)*axW;}
+
+  // zone fills
+  ctx.fillStyle='rgba(155,114,232,.13)';
+  ctx.fillRect(nx(WISE_LO),PT,nx(WISE_HI)-nx(WISE_LO),H-PT-PB);
+  ctx.fillStyle='rgba(201,168,76,.12)';
+  ctx.fillRect(nx(ELEM_LO),PT,nx(ELEM_HI)-nx(ELEM_LO),H-PT-PB);
+  ctx.fillStyle='rgba(77,184,122,.15)';
+  ctx.fillRect(nx(HELGA_LO),PT,nx(HELGA_HI)-nx(HELGA_LO),H-PT-PB);
+
+  // axis
+  ctx.strokeStyle='#1e2240';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(PL,H-PB);ctx.lineTo(W-PR,H-PB);ctx.stroke();
+
+  // ticks
+  ctx.font="10px 'Space Mono',monospace"; ctx.textAlign='center';
+  for(let n=73;n<=111;n++){
+    const x=nx(n);
+    if(x<PL||x>W-PR)continue;
+    ctx.strokeStyle='#1e2240';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,H-PB);ctx.lineTo(x,H-PB+4);ctx.stroke();
+    if(n%5===0){
+      ctx.fillStyle='#2e3655';ctx.fillText(n,x,H-PB+16);
+    }
+  }
+
+  // n_H line
+  const xH=nx(N_H);
+  ctx.strokeStyle='#66bb6a';ctx.lineWidth=2;
+  ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(xH,PT);ctx.lineTo(xH,H-PB);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#66bb6a';ctx.font="8.5px 'Space Mono',monospace";ctx.textAlign='center';
+  ctx.fillText('n_H = 92.19',xH,PT-14);
+  ctx.fillText('condensation',xH,PT-24);
+
+  // WISE center line
+  const xWC=nx(WISE_CENTER);
+  ctx.strokeStyle='rgba(155,114,232,.6)';ctx.lineWidth=1;
+  ctx.setLineDash([3,4]);
+  ctx.beginPath();ctx.moveTo(xWC,PT+10);ctx.lineTo(xWC,H-PB);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // HELGA center line
+  const xHC=nx(HELGA_CENTER);
+  ctx.strokeStyle='rgba(77,184,122,.6)';ctx.lineWidth=1;
+  ctx.setLineDash([3,4]);
+  ctx.beginPath();ctx.moveTo(xHC,PT+10);ctx.lineTo(xHC,H-PB);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // cavity center line
+  const xCC=nx(100.935);
+  ctx.strokeStyle='rgba(68,68,136,.6)';ctx.lineWidth=1;
+  ctx.setLineDash([2,6]);
+  ctx.beginPath();ctx.moveTo(xCC,PT+10);ctx.lineTo(xCC,H-PB);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(68,68,200,.5)';ctx.font="7.5px 'Space Mono',monospace";
+  ctx.textAlign='center';ctx.fillText('cavity',xCC,PT+4);
+  ctx.fillText('center',xCC,PT+13);
+
+  // ── Gap arrows ──
+  const gapY=H-PB-22;
+
+  // Left gap: WISE_CENTER → n_H
+  const gL1=nx(WISE_CENTER),gL2=nx(N_H);
+  ctx.strokeStyle='rgba(155,114,232,.7)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(gL1,gapY);ctx.lineTo(gL2,gapY);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(gL2,gapY);ctx.lineTo(gL2-7,gapY-3);ctx.lineTo(gL2-7,gapY+3);ctx.closePath();
+  ctx.fillStyle='rgba(155,114,232,.7)';ctx.fill();
+  ctx.beginPath();ctx.moveTo(gL1,gapY);ctx.lineTo(gL1+7,gapY-3);ctx.lineTo(gL1+7,gapY+3);ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle='rgba(155,114,232,.9)';ctx.font="9px 'Space Mono',monospace";ctx.textAlign='center';
+  ctx.fillText('Δn = '+(N_H-WISE_CENTER).toFixed(2)+' oct',(gL1+gL2)/2,gapY-8);
+
+  // Right gap: n_H → HELGA_CENTER
+  const gR1=nx(N_H),gR2=nx(HELGA_CENTER);
+  ctx.strokeStyle='rgba(77,184,122,.7)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(gR1,gapY);ctx.lineTo(gR2,gapY);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(gR1,gapY);ctx.lineTo(gR1+7,gapY-3);ctx.lineTo(gR1+7,gapY+3);ctx.closePath();
+  ctx.fillStyle='rgba(77,184,122,.7)';ctx.fill();
+  ctx.beginPath();ctx.moveTo(gR2,gapY);ctx.lineTo(gR2-7,gapY-3);ctx.lineTo(gR2-7,gapY+3);ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle='rgba(77,184,122,.9)';ctx.font="9px 'Space Mono',monospace";ctx.textAlign='center';
+  ctx.fillText('Δn = '+(HELGA_CENTER-N_H).toFixed(2)+' oct',(gR1+gR2)/2,gapY-8);
+
+  // Desert width bracket below axis
+  const dY=H-PB+28;
+  const dX1=nx(9.58+72),dX2=nx(19.55+72);  // shift desert to visible range for comparison
+  // Just draw a reference line showing desert width = 9.97 at the n_H position
+  const dW=(19.55-9.58)/(N_HI-N_LO)*axW;
+  const dCenterX=nx(N_H);
+  ctx.strokeStyle='rgba(183,28,28,.5)';ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(dCenterX-dW/2,dY);ctx.lineTo(dCenterX+dW/2,dY);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(dCenterX-dW/2,dY);ctx.lineTo(dCenterX-dW/2+6,dY-3);ctx.lineTo(dCenterX-dW/2+6,dY+3);ctx.closePath();
+  ctx.fillStyle='rgba(183,28,28,.5)';ctx.fill();
+  ctx.beginPath();ctx.moveTo(dCenterX+dW/2,dY);ctx.lineTo(dCenterX+dW/2-6,dY-3);ctx.lineTo(dCenterX+dW/2-6,dY+3);ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(183,28,28,.7)';ctx.font="8px 'Space Mono',monospace";ctx.textAlign='center';
+  ctx.fillText('GUT desert width = 9.97 oct  (centered on n_H for comparison)',dCenterX,dY+13);
+
+  // zone labels above
+  ctx.font="8px 'Space Mono',monospace"; ctx.textAlign='center';
+  ctx.fillStyle='rgba(155,114,232,.7)';
+  ctx.fillText('WISE warm emission',nx((WISE_LO+WISE_HI)/2),PT-14);
+  ctx.fillText('n='+(WISE_LO).toFixed(1)+'–'+(WISE_HI).toFixed(1),nx((WISE_LO+WISE_HI)/2),PT-4);
+
+  ctx.fillStyle='rgba(201,168,76,.8)';
+  ctx.fillText('ELEMENT ZONE',nx(ELEM_CENTER),PT-14);
+  ctx.fillText('n=91.3–94.0',nx(ELEM_CENTER),PT-4);
+
+  ctx.fillStyle='rgba(77,184,122,.8)';
+  ctx.fillText('HELGA cold dust',nx((HELGA_LO+HELGA_HI)/2),PT-14);
+  ctx.fillText('n=100.5–103.1',nx((HELGA_LO+HELGA_HI)/2),PT-4);
+
+  // HELGA + WISE dots on axis
+  HELGA.forEach(s=>{
+    const x=nx(s.n);
+    ctx.fillStyle=s.color;
+    ctx.beginPath();ctx.arc(x,H-PB,5,0,Math.PI*2);ctx.fill();
+  });
+  WISE_DOTS.forEach(s=>{
+    const x=nx(s.n);
+    ctx.fillStyle=s.color;
+    ctx.beginPath();ctx.arc(x,H-PB,5,0,Math.PI*2);ctx.fill();
+  });
+
+  // axis label
+  ctx.fillStyle='#2e3655';ctx.font="8.5px 'Space Mono',monospace";ctx.textAlign='center';
+  ctx.fillText('octave depth  n  (← lower freq / longer wavelength)',W/2,H-6);
+
+  // build notes
+  const symNotes=document.getElementById('symNotes');
+  symNotes.innerHTML='';
+  const notes=[
+    {
+      title:'Gap symmetry',
+      body:`Left gap (WISE → n_H): <span class='v'>${(N_H-WISE_CENTER).toFixed(2)} oct</span><br>
+           Right gap (n_H → HELGA): <span class='g'>${(HELGA_CENTER-N_H).toFixed(2)} oct</span><br>
+           GUT desert width: <span class='r'>9.97 oct</span><br>
+           Ratio L/R: <span class='hi'>${((N_H-WISE_CENTER)/(HELGA_CENTER-N_H)).toFixed(3)}</span> — near 1.0 but not exact`
+    },
+    {
+      title:'Cavity center vs HELGA',
+      body:`Cavity center: <span class='hi'>100.935</span><br>
+           HELGA range: <span class='g'>100.50–103.14</span><br>
+           Cavity center falls <span class='g'>inside</span> the HELGA cold dust zone,<br>
+           ${(0.935-0.5+100-100).toFixed(2)+0.435} oct above the PDR boundary`
+    },
+    {
+      title:'Desert echo',
+      body:`Desert width (9.97 oct) ≈ both M31 gaps (~10 oct).<br>
+           The desert sits at n 9.58–19.55.<br>
+           The M31 dust symmetry sits at n 82–103.<br>
+           Same <span class='r'>width</span>, different <span class='hi'>location</span> on ring.`
+    },
+    {
+      title:'Verdict',
+      body:`Symmetry is <span class='hi'>approximate</span>, not exact.<br>
+           L/R ratio ≈ 1.06 — asymmetry within ~6%.<br>
+           Desert match: within 0.6 oct on both sides.<br>
+           <span class='v'>Suggestive</span> — merits flagging in Paper 2<br>
+           but not a confirmed identity yet.`
+    },
+  ];
+  notes.forEach(note=>{
+    const d=document.createElement('div');
+    d.className='note-card';
+    d.innerHTML=`<div class='nc-title'>${note.title}</div>${note.body}`;
+    symNotes.appendChild(d);
+  });
+}
+
+// ── TOOLTIP ───────────────────────────────────────────────────────────────────
+const tip=document.getElementById('tooltip');
+function showTip(s,ev){
+  tip.innerHTML=`<div class="name">${s.label.replace('\n',' ')}</div>
+    <div class="n-val">n = ${s.n.toFixed ? s.n.toFixed(4) : s.n}</div>
+    <div class="desc">${s.desc}</div>`;
+  tip.style.display='block'; moveTip(ev);
+}
+function moveTip(ev){
+  let x=ev.clientX+14,y=ev.clientY-10;
+  if(x+230>window.innerWidth)x=ev.clientX-240;
+  tip.style.left=x+'px'; tip.style.top=y+'px';
+}
+function hideTip(){tip.style.display='none';}
+
+function attachMouse(id){
+  const c=document.getElementById(id);
+  c.addEventListener('mousemove',ev=>{
+    const rect=c.getBoundingClientRect();
+    const mx=ev.clientX-rect.left, my=ev.clientY-rect.top;
+    if(!c._hits)return;
+    let hit=null;
+    for(const h of c._hits){if(Math.hypot(mx-h.x,my-h.y)<h.r){hit=h;break;}}
+    if(hit){c.style.cursor='pointer';showTip(hit.s,ev);}
+    else{c.style.cursor='default';hideTip();}
+  });
+  c.addEventListener('mouseleave',hideTip);
+}
+window.addEventListener('mousemove',ev=>{if(tip.style.display==='block')moveTip(ev);});
+
+// ── PANEL SWITCHING ───────────────────────────────────────────────────────────
+function showPanel(id,ev){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  if(ev)ev.target.classList.add('active');
+  if(id==='full')   { drawFull();   attachMouse('c-full'); }
+  if(id==='sector') { drawSector(); attachMouse('c-sector'); }
+  if(id==='sym')    { drawSym(); }
+}
+
+window.addEventListener('load',()=>{ drawFull(); attachMouse('c-full'); });
+window.addEventListener('resize',()=>{
+  if(document.getElementById('panel-full').classList.contains('active'))   drawFull();
+  if(document.getElementById('panel-sector').classList.contains('active')) drawSector();
+  if(document.getElementById('panel-sym').classList.contains('active'))    drawSym();
+});
+</script>
+</body>
+</html>

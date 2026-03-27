@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seraphim — Dual Wave Structure</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap');
+
+:root {
+  --bg:        #05060e;
+  --bg2:       #090b18;
+  --ring:      #1a1f3a;
+  --dim:       #3a405e;
+  --text:      #b8bcda;
+
+  /* wave colours */
+  --wave1:     #ff6b35;   /* desert — original — amber-orange */
+  --wave2:     #4fc3f7;   /* opposite wave — cold blue */
+  --valley:    #b71c1c;   /* desert center valley */
+  --valley2:   #1565c0;   /* opposite valley */
+
+  /* scale colours */
+  --bbh:       #ffb300;
+  --flip:      #80cbc4;
+  --dS:        #4fc3f7;
+  --ew:        #ba68c8;
+  --qcd:       #9575cd;
+  --cmb:       #26c6da;
+  --chem:      #66bb6a;
+  --axion:     #4fc3f7;
+  --arcade:    #ef5350;
+  --radio:     #ff7043;
+  --chemant:   #a5d6a7;
+  --planck:    #546e7a;
+
+  --g1:        rgba(255,179,0,0.22);
+  --g2:        rgba(79,195,247,0.18);
+}
+
+* { box-sizing:border-box; margin:0; padding:0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* grain overlay */
+body::after {
+  content:'';
+  position:fixed; inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none; z-index:999; opacity:0.4;
+}
+
+header {
+  position:relative; z-index:2;
+  text-align:center;
+  padding: 2rem 1rem 0.6rem;
+  border-bottom: 1px solid var(--ring);
+}
+header h1 {
+  font-family:'Cormorant Garamond',serif;
+  font-weight:300;
+  font-size: clamp(1.3rem,3vw,2rem);
+  letter-spacing:.25em;
+  text-transform:uppercase;
+  color:#fff;
+}
+header p {
+  font-size:.6rem;
+  color:var(--dim);
+  letter-spacing:.14em;
+  margin-top:.35rem;
+}
+
+/* tabs */
+.tabs {
+  display:flex; justify-content:center; gap:.4rem;
+  padding:.8rem 1rem;
+  position:relative; z-index:2;
+  flex-wrap:wrap;
+}
+.tab {
+  background:none;
+  border:1px solid var(--ring);
+  color:var(--dim);
+  font-family:'Share Tech Mono',monospace;
+  font-size:.58rem;
+  letter-spacing:.1em;
+  padding:.35rem .8rem;
+  cursor:pointer;
+  transition:all .2s;
+  text-transform:uppercase;
+}
+.tab:hover  { border-color:var(--wave1); color:var(--wave1); }
+.tab.active { border-color:var(--wave1); color:var(--wave1); background:rgba(255,107,53,.06); }
+
+.panel { display:none; position:relative; z-index:1; }
+.panel.active { display:flex; flex-direction:column; align-items:center; padding:.6rem; }
+
+canvas.ring-canvas { display:block; }
+
+/* tooltip */
+#tip {
+  position:fixed;
+  background:#060810;
+  border:1px solid var(--dim);
+  padding:.5rem .8rem;
+  font-size:.6rem; line-height:1.7;
+  pointer-events:none; z-index:500;
+  max-width:240px; display:none;
+  box-shadow:0 0 24px rgba(79,195,247,.12);
+}
+#tip .tn { color:#fff; font-size:.65rem; font-weight:700; }
+#tip .tv { color:var(--wave1); }
+#tip .td { color:var(--dim); margin-top:.15rem; }
+
+/* legend */
+.legend {
+  display:flex; flex-wrap:wrap; gap:.4rem .9rem;
+  padding:.6rem 1rem;
+  justify-content:center;
+  border-top:1px solid var(--ring);
+  margin-top:.5rem; position:relative; z-index:2;
+}
+.li { display:flex; align-items:center; gap:.3rem; font-size:.54rem; color:var(--dim); }
+.ld { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.lb { width:16px; height:8px; border-radius:1px; flex-shrink:0; }
+
+/* data panel */
+#panel-data {
+  display:none;
+  flex-direction:column;
+  padding:1.2rem 1.5rem;
+  max-width:820px; margin:0 auto; width:100%;
+}
+#panel-data.active { display:flex; }
+.data-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:.8rem; margin-top:.8rem; }
+.card {
+  background:var(--bg2);
+  border:1px solid var(--ring);
+  padding:.9rem 1rem;
+  transition:border-color .2s;
+}
+.card:hover { border-color:var(--wave1); }
+.card .cs { font-size:.5rem; letter-spacing:.12em; text-transform:uppercase; margin-bottom:.35rem; }
+.cs.w1  { color:var(--wave1); }
+.cs.w2  { color:var(--wave2); }
+.cs.conf{ color:#66bb6a; }
+.cs.sug { color:var(--bbh); }
+.cs.spec{ color:#ef9a9a; }
+.card h3 { font-family:'Cormorant Garamond',serif; font-size:.95rem; font-weight:400; color:#fff; margin-bottom:.3rem; }
+.card .cf { font-size:.6rem; color:var(--bbh); background:rgba(255,179,0,.05);
+            padding:.25rem .45rem; margin:.3rem 0; border-left:2px solid var(--bbh); }
+.card p  { font-size:.57rem; color:var(--dim); line-height:1.65; }
+.hi { color:#66bb6a; font-weight:700; }
+
+.stitle { font-size:.56rem; letter-spacing:.18em; text-transform:uppercase;
+          color:var(--dim); margin-bottom:.6rem; padding-bottom:.3rem;
+          border-bottom:1px solid var(--ring); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Seraphim — Dual Wave Structure</h1>
+  <p>201.87-octave ring · Desert wave + Opposite polarization · Robertson antipodal realm · n=0 top, clockwise</p>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="show('full',this)">Full Ring</button>
+  <button class="tab" onclick="show('zoom',this)">Wave Zone ×5</button>
+  <button class="tab" onclick="show('data',this)">Key Results</button>
+</div>
+
+<div id="panel-full" class="panel active"></div>
+<div id="panel-zoom" class="panel"></div>
+<div id="panel-data" class="panel">
+  <p class="stitle">Structural Results — March 23, 2026</p>
+  <div class="data-grid">
+
+    <div class="card">
+      <div class="cs w1">ORIGINAL DESERT WAVE</div>
+      <h3>GUT Desert — Expansion Epoch</h3>
+      <div class="cf">n = 9.561 → 14.561 → 19.561</div>
+      <p>Chi k=3 (string wall) to k=8 (seesaw wall). Width = 5×χ(S²) = 10 oct exactly. Center at chi k=5.5 — chi-wave zero crossing. Two tidal crests passing through each other. C_eff at center = 5.5/δn = <span class="hi">3.1375 ≈ π</span> (0.13%).</p>
+    </div>
+
+    <div class="card">
+      <div class="cs w2">OPPOSITE WAVE (ANTIPODAL)</div>
+      <h3>Reflected Desert — Observable Radio Cosmos</h3>
+      <div class="cf">n = 110.496 → 115.496 → 120.496</div>
+      <p>Same ±5 oct half-width projected from desert center antipode. Wall A (10.13 GHz) lands on <span class="hi">Grid 1 m=63, Δ=0.002 oct</span> — same precision as CMB-BBH identity. Wall B (9.9 MHz) = cosmic/ionospheric radio opacity floor.</p>
+    </div>
+
+    <div class="card">
+      <div class="cs conf">CLOSED LOOP — DERIVED</div>
+      <h3>Walls Back-Project Exactly</h3>
+      <div class="cf">Wall A → 9.561 ✓   Wall B → 19.561 ✓</div>
+      <p>Projecting opposite-wave walls back across the ring diameter returns exactly to the desert's own walls. The ring closes on itself. The GUT epoch and the observable radio universe are the same geometric object on opposite sides.</p>
+    </div>
+
+    <div class="card">
+      <div class="cs sug">SUGGESTIVE</div>
+      <h3>Desert Valley → Axion Window</h3>
+      <div class="cf">n=14.561 → antipode n=115.496</div>
+      <p>Chi k=56 at n=115.561, Δ=0.065 oct. Energy = <span class="hi">1.25 μeV</span>. Squarely inside QCD axion search window. ADMX science runs target 1–4 μeV. k=56 = k_seesaw × 7.</p>
+    </div>
+
+    <div class="card">
+      <div class="cs sug">SUGGESTIVE</div>
+      <h3>Periodic Table → Galaxy Floor</h3>
+      <div class="cf">n_H=92.19 → antipode n=193.125</div>
+      <p>Grid 2 m=110 at n=193.105, Δ=0.020 oct. Robertson Δx at antipode = <span class="hi">0.571 Mpc</span> — nearest-neighbour galaxy separation / WDM free-streaming scale. Chemistry condensation ceiling points to galaxy formation floor.</p>
+    </div>
+
+    <div class="card">
+      <div class="cs spec">SPECULATIVE</div>
+      <h3>ARCADE 2 Anomaly</h3>
+      <div class="cf">Wall A = 10.13 GHz</div>
+      <p>The unexplained isotropic cosmic radio background excess (ARCADE 2, 3–10 GHz) peaks at the exact frequency of opposite-wave Wall A. If it is a relic of the desert epoch expansion stretched 100 octaves across the ring, it would appear here. Grid 1 m=63 hit is structural; ARCADE 2 connection is speculative.</p>
+    </div>
+
+    <div class="card">
+      <div class="cs w1">ROBERTSON ANTIPODAL REALM</div>
+      <h3>Flipped Uncertainty Principle</h3>
+      <div class="cf">C_eff (antipodal) = 28–57</div>
+      <p>All antipodal points have C_eff far outside the Robertson cascade [−1, +0.5]. Robertson at these scales is not describing geometry — it sets the <span class="hi">minimum resolvable structure size</span> in the dilute vacuum. Same ħ/2, but Δx is a cosmological length, not a Planck patch.</p>
+    </div>
+
+    <div class="card">
+      <div class="cs conf">CONFIRMED · IDENTITY 2</div>
+      <h3>CMB = Antipode(n_BBH) + δn</h3>
+      <div class="cf">108.0 = 106.249 + 1.751   Δ=0.002 oct</div>
+      <p>The CMB sits one Seraphim interval past the antipode of the BBH scale. Wall A (opposite desert wall) matches the same grid precision. Both are Δ=0.002 oct hits on confirmed Grid 1 nodes.</p>
+    </div>
+
+  </div>
+</div>
+
+<div class="legend">
+  <div class="li"><div class="lb" style="background:rgba(255,107,53,.5)"></div>Desert wave (original)</div>
+  <div class="li"><div class="lb" style="background:rgba(79,195,247,.4)"></div>Opposite wave (antipodal)</div>
+  <div class="li"><div class="ld" style="background:var(--bbh)"></div>n_BBH ★</div>
+  <div class="li"><div class="ld" style="background:var(--flip)"></div>n_flip</div>
+  <div class="li"><div class="ld" style="background:var(--cmb)"></div>CMB</div>
+  <div class="li"><div class="ld" style="background:var(--chem)"></div>H condensation</div>
+  <div class="li"><div class="ld" style="background:var(--chemant)"></div>Chem antipode (0.571 Mpc)</div>
+  <div class="li"><div class="ld" style="background:var(--arcade)"></div>Wall A / ARCADE 2</div>
+  <div class="li"><div class="ld" style="background:var(--radio)"></div>Wall B / radio floor</div>
+  <div class="li"><div class="ld" style="background:#9575cd"></div>Axion / opp. valley</div>
+</div>
+
+<div id="tip"></div>
+
+<script>
+// ── Constants ────────────────────────────────────────────────────────────────
+const N   = 201.87;
+const nFlip = 3.561, nBBH = 5.314, dN = 1.753;
+
+// ── All scales ───────────────────────────────────────────────────────────────
+const SCALES = [
+  // confirmed spine
+  { n:0.0,    r:5,  color:'#546e7a', label:'Planck\nwall',   desc:'n=0. Planck frequency. Ring origin.' },
+  { n:0.055,  r:5,  color:'#888',    label:'G1\nvac',        desc:'Grid 1 k=0 vacuum. C=−1.000 exactly.' },
+  { n:1.808,  r:8,  color:'#4fc3f7', label:'n_anti\ndS',     desc:'Anti-horizon. C=−0.5. Derived Mar 18.' },
+  { n:3.561,  r:9,  color:'#80cbc4', label:'n_flip',         desc:'Realm boundary. C=0. Robertson-independent.' },
+  { n:5.314,  r:13, color:'#ffb300', label:'n_BBH ★\n264 ev',desc:'BBH mergers. C=+0.5. Confirmed 264 events, 0.05σ.' },
+
+  // desert wave (original) — wave 1
+  { n:9.561,  r:9,  color:'#ff6b35', label:'String\nwall',   desc:'Desert lower wall. Chi k=3. Δ=0.019 oct. Crest of wave 1.' },
+  { n:14.561, r:7,  color:'#b71c1c', label:'Desert\nvalley', desc:'Desert center. Chi k=5.5. Chi-wave = 0. C_eff = 3.1375 ≈ π (0.13%). Tidal crossing point.' },
+  { n:19.561, r:9,  color:'#ff6b35', label:'Seesaw\nwall',   desc:'Desert upper wall. Chi k=8. Δ=0.011 oct. Crest of wave 1 opposite.' },
+
+  // particle physics
+  { n:59.41,  r:7,  color:'#ba68c8', label:'Electroweak',    desc:'EW symmetry breaking ~100 GeV.' },
+  { n:68.8,   r:6,  color:'#9575cd', label:'QCD',            desc:'QCD confinement ~150 MeV.' },
+
+  // chemistry ceiling
+  { n:92.19,  r:9,  color:'#66bb6a', label:'H cond.\nceiling',desc:'Hydrogen ionization / condensation ceiling. 118 elements sorted, zero violations.' },
+
+  // cavity center
+  { n:100.935,r:5,  color:'#2a2f50', label:'Cavity\ncenter', desc:'Ring equator. Exact midpoint of 201.87-octave cavity.' },
+
+  // CMB
+  { n:108.0,  r:10, color:'#26c6da', label:'CMB',            desc:'CMB photon scale. T=2.725K. Antipode(n_BBH)+δn, Δ=0.002 oct.' },
+
+  // opposite wave (wave 2) — antipodal desert
+  { n:110.496,r:9,  color:'#ef5350', label:'Wall A\n10 GHz',  desc:'Opposite wave lower wall. Grid 1 m=63, Δ=0.002 oct. 10.13 GHz / 42 μeV. ARCADE 2 anomaly upper edge. Back-projects → string wall (9.561) exactly.' },
+  { n:115.496,r:7,  color:'#5c6bc0', label:'Axion\nzone',     desc:'Opposite wave center. Antipode of desert valley. Chi k=56, Δ=0.065 oct. 1.25 μeV — QCD axion window. ADMX target.' },
+  { n:120.496,r:9,  color:'#ff7043', label:'Wall B\n10 MHz',  desc:'Opposite wave upper wall. 9.9 MHz / 0.041 μeV. Cosmic + ionospheric radio opacity threshold. Back-projects → seesaw wall (19.561) exactly.' },
+
+  // chemistry antipode
+  { n:193.125,r:8,  color:'#a5d6a7', label:'Chem\nantipode', desc:'Antipode of H condensation ceiling. Grid 2 m=110, Δ=0.020 oct. Robertson Δx = 0.571 Mpc — galaxy formation / WDM free-streaming floor.' },
+
+  // Hubble
+  { n:201.87, r:7,  color:'#ccc',    label:'Hubble\nwrap',    desc:'Hubble horizon = Planck wall. Ring closure. N_Hub = 201.87 octaves.' },
+];
+
+// ── Geometry ─────────────────────────────────────────────────────────────────
+function nToAngle(n, circ=N) {
+  return Math.PI/2 - (n/circ)*2*Math.PI;
+}
+function nToXY(n, r, cx, cy, circ=N) {
+  const a = nToAngle(n, circ);
+  return [cx + r*Math.cos(a), cy - r*Math.sin(a)];
+}
+function arcPath(ctx, cx, cy, r1, r2, n1, n2, circ=N) {
+  const a1 = -nToAngle(n1,circ), a2 = -nToAngle(n2,circ);
+  ctx.beginPath();
+  ctx.arc(cx,cy,r2,a1,a2,false);
+  ctx.arc(cx,cy,r1,a2,a1,true);
+  ctx.closePath();
+}
+
+// ── Draw glow dot ─────────────────────────────────────────────────────────────
+function hexFull(c) {
+  // expand #abc → #aabbcc so we can safely append 2-char alpha
+  if(/^#[0-9a-fA-F]{3}$/.test(c))
+    return '#'+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];
+  return c;
+}
+function dot(ctx, cx, cy, s, glow=true) {
+  if(glow && s.r>=7) {
+    const fc = hexFull(s.color);
+    const g = ctx.createRadialGradient(cx,cy,0,cx,cy,s.r*3.5);
+    g.addColorStop(0, fc+'55'); g.addColorStop(1,'transparent');
+    ctx.beginPath(); ctx.arc(cx,cy,s.r*3.5,0,Math.PI*2);
+    ctx.fillStyle=g; ctx.fill();
+  }
+  ctx.beginPath(); ctx.arc(cx,cy,s.r,0,Math.PI*2);
+  ctx.fillStyle=s.color;
+  ctx.strokeStyle='#00000066'; ctx.lineWidth=1;
+  ctx.fill(); ctx.stroke();
+}
+
+// ── Draw wave arc with sine oscillation rendered as a wavy ring track ─────────
+function drawWaveArc(ctx, cx, cy, R, n1, n2, color, amplitude, circ=N, segments=300) {
+  const a1 = nToAngle(n1, circ);
+  const a2 = nToAngle(n2, circ);
+  // go from a1 to a2, counterclockwise in angle (decreasing angle = clockwise on canvas)
+  const da = a2 - a1;
+  ctx.beginPath();
+  for(let i=0; i<=segments; i++) {
+    const t = i/segments;
+    const angle = a1 + t*da;
+    // sine wave in the radial direction
+    const wave = amplitude * Math.sin(t * Math.PI); // one half-period = one arch
+    const r = R + wave;
+    const x = cx + r*Math.cos(angle);
+    const y = cy - r*Math.sin(angle);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+}
+
+// ── Draw diameter connector ───────────────────────────────────────────────────
+function drawDiameter(ctx, cx, cy, R, n, color, dash=[4,6], alpha=0.3) {
+  const [x1,y1] = nToXY(n, R*0.95, cx, cy);
+  const [x2,y2] = nToXY(n + N/2, R*0.95, cx, cy);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+  ctx.strokeStyle = color; ctx.lineWidth=1;
+  ctx.setLineDash(dash); ctx.stroke(); ctx.setLineDash([]);
+  ctx.restore();
+}
+
+// ── Label helper ──────────────────────────────────────────────────────────────
+function label(ctx, n, R, cx, cy, text, color, size=7.5, circ=N, extraR=18) {
+  const lr = R + extraR;
+  const [lx,ly] = nToXY(n, lr, cx, cy, circ);
+  const lines = text.split('\n');
+  ctx.font = `${size}px 'Share Tech Mono',monospace`;
+  ctx.fillStyle = color;
+  ctx.textAlign  = lx < cx ? 'right' : (Math.abs(lx-cx)<30 ? 'center' : 'left');
+  ctx.textBaseline = ly < cy ? 'bottom' : 'top';
+  lines.forEach((l,i) => ctx.fillText(l, lx, ly + i*(size+1.5)));
+}
+
+// ── FULL RING ─────────────────────────────────────────────────────────────────
+function drawFull() {
+  const wrap = document.getElementById('panel-full');
+  let canvas = wrap.querySelector('canvas');
+  if(!canvas){ canvas=document.createElement('canvas'); canvas.className='ring-canvas'; wrap.appendChild(canvas); }
+  const dpr = window.devicePixelRatio||1;
+  const size = Math.min(wrap.offsetWidth-8, 620);
+  canvas.width=size*dpr; canvas.height=size*dpr;
+  canvas.style.width=size+'px'; canvas.style.height=size+'px';
+  const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  const cx=size/2, cy=size/2, R=size*0.37;
+
+  ctx.clearRect(0,0,size,size);
+
+  // faint background rings
+  [0.97,0.89,0.82].forEach((f,i)=>{
+    ctx.beginPath(); ctx.arc(cx,cy,R*f,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(26,31,58,${0.8-i*0.2})`; ctx.lineWidth=.5; ctx.stroke();
+  });
+
+  // ── ZONE FILLS ──
+  // de Sitter zone
+  arcPath(ctx,cx,cy,R*.88,R,0,3.616); ctx.fillStyle='rgba(79,195,247,0.08)'; ctx.fill();
+
+  // desert (wave 1) — warm orange fill
+  arcPath(ctx,cx,cy,R*.88,R,9.561,19.561); ctx.fillStyle='rgba(255,107,53,0.22)'; ctx.fill();
+  // desert valley darker stripe
+  arcPath(ctx,cx,cy,R*.88,R,13.5,15.5); ctx.fillStyle='rgba(183,28,28,0.25)'; ctx.fill();
+
+  // BBH band
+  arcPath(ctx,cx,cy,R*.88,R,4.5,6.0); ctx.fillStyle='rgba(255,179,0,0.14)'; ctx.fill();
+
+  // H condensation zone
+  arcPath(ctx,cx,cy,R*.88,R,91.0,93.5); ctx.fillStyle='rgba(102,187,106,0.12)'; ctx.fill();
+
+  // opposite wave (wave 2) — cold blue fill
+  arcPath(ctx,cx,cy,R*.88,R,110.496,120.496); ctx.fillStyle='rgba(79,195,247,0.20)'; ctx.fill();
+  // opposite valley
+  arcPath(ctx,cx,cy,R*.88,R,114.3,116.7); ctx.fillStyle='rgba(21,101,192,0.22)'; ctx.fill();
+
+  // CMB zone
+  arcPath(ctx,cx,cy,R*.88,R,107.2,108.8); ctx.fillStyle='rgba(38,198,218,0.12)'; ctx.fill();
+
+  // chemistry antipode zone
+  arcPath(ctx,cx,cy,R*.88,R,192.0,194.3); ctx.fillStyle='rgba(165,214,167,0.12)'; ctx.fill();
+
+  // main ring
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+  ctx.strokeStyle='#1a1f3a'; ctx.lineWidth=1.5; ctx.stroke();
+
+  // ── WAVE ARCS (sine undulation on ring) ──
+  // Wave 1: desert — orange, arches outward
+  drawWaveArc(ctx,cx,cy,R,9.561,19.561,'rgba(255,107,53,0.7)', R*0.045);
+  // Wave 2: opposite — blue, arches inward (negative amplitude)
+  drawWaveArc(ctx,cx,cy,R,110.496,120.496,'rgba(79,195,247,0.7)', -R*0.045);
+
+  // ── DIAMETER CONNECTORS ──
+  // Desert center ↔ Axion antipode
+  drawDiameter(ctx,cx,cy,R,14.561,'#5c6bc0',[3,8],0.35);
+  // String wall ↔ Wall A
+  drawDiameter(ctx,cx,cy,R,9.561,'#ff6b35',[2,10],0.25);
+  // Seesaw wall ↔ Wall B
+  drawDiameter(ctx,cx,cy,R,19.561,'#ff7043',[2,10],0.25);
+  // n_BBH ↔ CMB
+  drawDiameter(ctx,cx,cy,R,5.314,'#ffb300',[4,6],0.22);
+  // H cond ↔ chem antipode
+  drawDiameter(ctx,cx,cy,R,92.19,'#66bb6a',[2,10],0.22);
+
+  // ── TICK MARKS ──
+  for(let n=0;n<N;n+=20){
+    const [x1,y1]=nToXY(n,R*.88,cx,cy);
+    const [x2,y2]=nToXY(n,R+4,cx,cy);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+    ctx.strokeStyle='#2a2f50'; ctx.lineWidth=.7; ctx.stroke();
+    const [xl,yl]=nToXY(n,R+13,cx,cy);
+    ctx.fillStyle='#2a2f50'; ctx.font="7.5px 'Share Tech Mono',monospace";
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(n,xl,yl);
+  }
+  for(let n=0;n<N;n+=5){
+    if(n%20===0) continue;
+    const [x1,y1]=nToXY(n,R*.92,cx,cy);
+    const [x2,y2]=nToXY(n,R,cx,cy);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+    ctx.strokeStyle='#1a1f3a'; ctx.lineWidth=.4; ctx.stroke();
+  }
+
+  // ── CENTRE TEXT ──
+  ctx.fillStyle='#8888aa'; ctx.font="italic 11px 'Cormorant Garamond',serif";
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('n(C) = 3.561 + 3.506×C', cx, cy-10);
+  ctx.fillStyle='#2a2f50'; ctx.font="7px 'Share Tech Mono',monospace";
+  ctx.fillText('desert ⟷ opposite wave', cx, cy+4);
+  ctx.fillText('C_eff(valley) ≈ π', cx, cy+16);
+
+  // ── DOTS + LABELS ──
+  SCALES.forEach(s=>{
+    const [dx,dy]=nToXY(s.n,R,cx,cy);
+    dot(ctx,dx,dy,s);
+  });
+
+  const labelled=[0,1.808,3.561,5.314,9.561,14.561,19.561,92.19,108.0,110.496,115.496,120.496,193.125,201.87];
+  SCALES.filter(s=>labelled.includes(s.n)).forEach(s=>{
+    label(ctx,s.n,R,cx,cy,s.label,s.color,7.5,N,20);
+  });
+
+  // hit regions
+  canvas._hits = SCALES.map(s=>{ const [dx,dy]=nToXY(s.n,R,cx,cy); return {x:dx,y:dy,r:s.r+7,s}; });
+  attachMouse(canvas);
+}
+
+// ── ZOOM (wave zone ×5 — shows both waves) ────────────────────────────────────
+function drawZoom() {
+  const wrap = document.getElementById('panel-zoom');
+  let canvas = wrap.querySelector('canvas');
+  if(!canvas){ canvas=document.createElement('canvas'); canvas.className='ring-canvas'; wrap.appendChild(canvas); }
+  const dpr = window.devicePixelRatio||1;
+  const size = Math.min(Math.max(wrap.offsetWidth,300)-8, 620);
+  canvas.width=size*dpr; canvas.height=size*dpr;
+  canvas.style.width=size+'px'; canvas.style.height=size+'px';
+  const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  const cx=size/2, cy=size/2, R=size*0.37;
+
+  // We show two separate "zoom windows" — both waves side by side on the circle
+  // Use a virtual circumference that shows only the wave zones
+  // We'll use a 45-octave window mapped to full circle, centered on each wave
+  // Actually: show the two waves on a single ring with circ=45, offset
+
+  // Better: two mini rings side by side showing each wave zone
+  // Left: original desert (n=5 to 25), Right: opposite wave (n=105 to 125)
+
+  ctx.clearRect(0,0,size,size);
+
+  const pad = size*0.03;
+  const halfW = size/2 - pad;
+  const subR = halfW*0.38;
+
+  function drawSubRing(cx2, label2, nStart, nEnd, scaleOffset) {
+    const circ2 = nEnd - nStart;
+    const cy2 = cy;
+
+    // background ring
+    [1, 0.88].forEach(f=>{
+      ctx.beginPath(); ctx.arc(cx2,cy2,subR*f,0,Math.PI*2);
+      ctx.strokeStyle='#1a1f3a'; ctx.lineWidth=1; ctx.stroke();
+    });
+
+    function nToXY2(n,r){ return nToXY(n-nStart,r,cx2,cy2,circ2); }
+    function nToAngle2(n){ return nToAngle(n-nStart,circ2); }
+
+    // fill for the wave band
+    const isDesert = nStart < 20;
+    const fillColor = isDesert ? 'rgba(255,107,53,0.25)' : 'rgba(79,195,247,0.22)';
+    const valleyColor = isDesert ? 'rgba(183,28,28,0.30)' : 'rgba(21,101,192,0.28)';
+    const waveColor = isDesert ? 'rgba(255,107,53,0.8)' : 'rgba(79,195,247,0.8)';
+    const waveAmp = isDesert ? subR*0.055 : -subR*0.055;
+
+    // zone fill
+    const wN1 = isDesert ? 9.561 : 110.496;
+    const wN2 = isDesert ? 19.561 : 120.496;
+    const wVC = isDesert ? 14.561 : 115.496;
+    arcPath(ctx,cx2,cy2,subR*.88,subR,wN1-nStart,wN2-nStart,circ2);
+    ctx.fillStyle=fillColor; ctx.fill();
+    arcPath(ctx,cx2,cy2,subR*.88,subR,wVC-1.1-nStart,wVC+1.1-nStart,circ2);
+    ctx.fillStyle=valleyColor; ctx.fill();
+
+    // sine wave arc
+    drawWaveArc(ctx,cx2,cy2,subR,wN1-nStart,wN2-nStart,waveColor,waveAmp,circ2,400);
+
+    // Grid 1 tick marks (small squares)
+    for(let k=0;k<=30;k++){
+      const gn = 0.055 + k*1.753;
+      if(gn<nStart||gn>nEnd) continue;
+      const [gx,gy]=nToXY2(gn,subR);
+      ctx.fillStyle='rgba(255,179,0,0.6)';
+      ctx.fillRect(gx-3,gy-3,6,6);
+    }
+    // Grid 2
+    for(let k=0;k<=70;k++){
+      const gn = 0.275 + k*1.753;
+      if(gn<nStart||gn>nEnd) continue;
+      const [gx,gy]=nToXY2(gn,subR);
+      ctx.save(); ctx.translate(gx,gy); ctx.rotate(Math.PI/4);
+      ctx.fillStyle='rgba(79,195,247,0.6)'; ctx.fillRect(-2.5,-2.5,5,5);
+      ctx.restore();
+    }
+
+    // Chi ladder ticks
+    for(let k=0;k<=70;k++){
+      const cn = 3.561 + k*2;
+      if(cn<nStart||cn>nEnd) continue;
+      const [x1,y1]=nToXY2(cn,subR*.86);
+      const [x2,y2]=nToXY2(cn,subR+3);
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+      ctx.strokeStyle='rgba(255,107,53,0.7)'; ctx.lineWidth=1.2; ctx.stroke();
+      // k label
+      const [xl,yl]=nToXY2(cn,subR+14);
+      ctx.font="7px 'Share Tech Mono',monospace";
+      ctx.fillStyle='rgba(255,107,53,0.5)';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('χ'+k,xl,yl);
+    }
+
+    // tick every 1 oct
+    for(let n=Math.ceil(nStart);n<=nEnd;n+=1){
+      if(n%5===0) continue;
+      const [x1,y1]=nToXY2(n,subR*.93);
+      const [x2,y2]=nToXY2(n,subR);
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+      ctx.strokeStyle='#1a1f3a'; ctx.lineWidth=.4; ctx.stroke();
+    }
+    for(let n=Math.ceil(nStart/5)*5;n<=nEnd;n+=5){
+      const [x1,y1]=nToXY2(n,subR*.87);
+      const [x2,y2]=nToXY2(n,subR+3);
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+      ctx.strokeStyle='#2a2f50'; ctx.lineWidth=.7; ctx.stroke();
+      const [xl,yl]=nToXY2(n,subR+12);
+      ctx.fillStyle='#2a2f50'; ctx.font="7px 'Share Tech Mono',monospace";
+      ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(n,xl,yl);
+    }
+
+    // dots
+    const relevant = SCALES.filter(s=>s.n>=nStart-1&&s.n<=nEnd+1);
+    relevant.forEach(s=>{
+      const [dx,dy]=nToXY2(s.n,subR);
+      dot(ctx,dx,dy,s,true);
+      if(s.r>=7){
+        const [lx,ly]=nToXY2(s.n,subR+22);
+        const lines=s.label.split('\n');
+        ctx.font=`7.5px 'Share Tech Mono',monospace`;
+        ctx.fillStyle=s.color;
+        ctx.textAlign=lx<cx2?'right':(Math.abs(lx-cx2)<25?'center':'left');
+        ctx.textBaseline=ly<cy2?'bottom':'top';
+        lines.forEach((l,i)=>ctx.fillText(l,lx,ly+i*9));
+      }
+    });
+
+    // centre label
+    ctx.fillStyle='#8888aa'; ctx.font="italic 10px 'Cormorant Garamond',serif";
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(label2, cx2, cy2-8);
+    ctx.fillStyle='#3a3f60'; ctx.font="6.5px 'Share Tech Mono',monospace";
+    ctx.fillText(`n = ${nStart}–${nEnd}`, cx2, cy2+6);
+  }
+
+  // left ring = desert wave
+  drawSubRing(size*0.27, 'WAVE 1\nDesert', 5, 26, 0);
+  // right ring = opposite wave
+  drawSubRing(size*0.73, 'WAVE 2\nOpposite', 105, 126, 0);
+
+  // polarization arrow between the two rings
+  const midX = size*0.5;
+  ctx.save();
+  ctx.globalAlpha=0.4;
+  ctx.font="9px 'Share Tech Mono',monospace";
+  ctx.fillStyle='#5c5f80';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('◄── 100 octaves ──►', midX, cy-20);
+  ctx.fillText('opposite', midX, cy);
+  ctx.fillText('polarization', midX, cy+14);
+  ctx.fillText('C_eff(v1) ≈ π', midX, cy+38);
+  ctx.fillText('C_eff(v2) ≈ 32', midX, cy+52);
+  ctx.restore();
+
+  // hit regions
+  canvas._hits=[];
+  attachMouse(canvas);
+}
+
+// ── Tooltip ───────────────────────────────────────────────────────────────────
+const tip=document.getElementById('tip');
+function showTip(s,ev){
+  tip.innerHTML=`<div class="tn">${s.label.replace('\n',' ')}</div><div class="tv">n = ${s.n}</div><div class="td">${s.desc}</div>`;
+  tip.style.display='block'; moveTip(ev);
+}
+function moveTip(ev){
+  let x=ev.clientX+14,y=ev.clientY-10;
+  if(x+250>window.innerWidth) x=ev.clientX-260;
+  tip.style.left=x+'px'; tip.style.top=y+'px';
+}
+function hideTip(){ tip.style.display='none'; }
+
+function attachMouse(canvas){
+  if(canvas._mouseAttached) return;
+  canvas._mouseAttached = true;
+  canvas.addEventListener('mousemove',ev=>{
+    const rect=canvas.getBoundingClientRect();
+    const mx=ev.clientX-rect.left, my=ev.clientY-rect.top;
+    if(!canvas._hits){hideTip();return;}
+    let hit=null;
+    for(const h of canvas._hits){ if(Math.hypot(mx-h.x,my-h.y)<h.r){hit=h;break;} }
+    if(hit){canvas.style.cursor='pointer';showTip(hit.s,ev);}
+    else   {canvas.style.cursor='default';hideTip();}
+  });
+  canvas.addEventListener('mouseleave',hideTip);
+}
+
+// ── Panel switching ───────────────────────────────────────────────────────────
+function show(id,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='full')  drawFull();
+  if(id==='zoom')  drawZoom();
+}
+
+window.addEventListener('load',()=>{
+  drawFull();
+  document.addEventListener('mousemove', ev=>{ if(tip.style.display==='block') moveTip(ev); });
+  window.addEventListener('resize',()=>{
+    const fp=document.getElementById('panel-full');
+    const zp=document.getElementById('panel-zoom');
+    if(fp.classList.contains('active')) drawFull();
+    if(zp.classList.contains('active')) drawZoom();
+  });
+  document.addEventListener('mousemove',ev=>{ if(tip.style.display==='block') moveTip(ev); });
+});
+</script>
+</body>
+</html>
