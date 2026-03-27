@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metallic Metallization — Seraphim Ring</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap');
+
+  :root {
+    --bg:        #07080f;
+    --bg2:       #0d0f1c;
+    --ring:      #1e2240;
+    --ring-glow: #2a3060;
+    --bbh:       #ffb300;
+    --flip:      #80cbc4;
+    --hcond:     #66bb6a;
+    --text:      #c8cce8;
+    --dim:       #5a5f80;
+    --metal:     #e040fb;
+    --below:     #ff5252;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 15% 20%, rgba(255,255,255,.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 73% 8%,  rgba(255,255,255,.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 41% 55%, rgba(255,255,255,.25)0%, transparent 100%),
+      radial-gradient(1px 1px at 88% 37%, rgba(255,255,255,.35)0%, transparent 100%),
+      radial-gradient(1px 1px at 5%  80%, rgba(255,255,255,.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 62% 91%, rgba(255,255,255,.3) 0%, transparent 100%);
+    pointer-events: none; z-index: 0;
+  }
+
+  header {
+    position: relative; z-index: 2;
+    text-align: center;
+    padding: 2.2rem 1rem .8rem;
+    border-bottom: 1px solid var(--ring);
+  }
+  header h1 {
+    font-family: 'Crimson Pro', serif;
+    font-weight: 300;
+    font-size: clamp(1.2rem, 3vw, 2rem);
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  header p { font-size: .62rem; color: var(--dim); letter-spacing: .1em; margin-top: .35rem; }
+
+  .tabs {
+    display: flex; justify-content: center; gap: .5rem;
+    padding: .9rem 1rem; position: relative; z-index: 2;
+  }
+  .tab {
+    background: none; border: 1px solid var(--ring);
+    color: var(--dim); font-family: 'Space Mono', monospace;
+    font-size: .58rem; letter-spacing: .1em; padding: .4rem .9rem;
+    cursor: pointer; transition: all .2s; text-transform: uppercase;
+  }
+  .tab:hover  { border-color: var(--metal); color: var(--metal); }
+  .tab.active { border-color: var(--metal); color: var(--metal); background: rgba(224,64,251,.06); }
+
+  .panel { display: none; position: relative; z-index: 1; }
+  .panel.active { display: block; }
+
+  #panel-full { display:none; flex-direction:column; align-items:center; padding:1rem; }
+  #panel-full.active { display:flex; }
+
+  #panel-zoom { display:none; flex-direction:column; align-items:center; padding:1rem; }
+  #panel-zoom.active { display:flex; }
+
+  .ring-wrap {
+    position: relative;
+    width: min(92vw, 580px);
+    aspect-ratio: 1;
+  }
+  canvas.ring-canvas { width:100%; height:100%; display:block; }
+
+  /* table */
+  #panel-table { padding: 1.2rem 1.5rem; max-width: 720px; margin: 0 auto; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: .62rem; }
+  .data-table th {
+    color: var(--dim); letter-spacing: .1em; text-transform: uppercase;
+    font-size: .54rem; padding: .5rem .6rem; border-bottom: 1px solid var(--ring);
+    text-align: left;
+  }
+  .data-table td { padding: .45rem .6rem; border-bottom: 1px solid #12152a; }
+  .data-table tr:hover td { background: #0d0f1c; }
+  .n-val { color: var(--bbh); }
+  .below-h { color: var(--below); }
+  .above-h { color: var(--metal); }
+  .anchor  { color: var(--hcond); font-weight: 700; }
+
+  /* tooltip */
+  #tooltip {
+    position: fixed; background: #0d0f1c;
+    border: 1px solid var(--ring-glow);
+    padding: .5rem .8rem; font-size: .62rem; line-height: 1.7;
+    pointer-events: none; z-index: 100; max-width: 240px;
+    display: none; box-shadow: 0 0 20px rgba(224,64,251,.15);
+  }
+  #tooltip .name  { color: #fff; font-weight: 700; font-size: .68rem; }
+  #tooltip .n-val { color: var(--bbh); }
+  #tooltip .delta { color: var(--metal); }
+  #tooltip .desc  { color: var(--dim); margin-top: .2rem; }
+
+  .legend {
+    display: flex; flex-wrap: wrap; gap: .5rem 1rem;
+    padding: .8rem 1rem; justify-content: center;
+    border-top: 1px solid var(--ring); margin-top: .8rem;
+    position: relative; z-index: 2;
+  }
+  .legend-item { display:flex; align-items:center; gap:.35rem; font-size:.56rem; color:var(--dim); letter-spacing:.06em; }
+  .legend-dot  { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .legend-box  { width:14px; height:8px; flex-shrink:0; border-radius:1px; }
+
+  .note {
+    font-size: .58rem; color: var(--dim); line-height: 1.8;
+    max-width: 560px; text-align: center; margin: .6rem auto 0;
+    padding: 0 1rem;
+  }
+  .note span { color: var(--metal); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Metallization Threshold — Seraphim Octave Ring</h1>
+  <p>Insulator-to-metal transition energies mapped through n = log₂(ν_P / ν) · n_H = 92.19 is the condensation ceiling</p>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="showPanel('full',event)">Full Ring</button>
+  <button class="tab"        onclick="showPanel('zoom',event)">Zoomed n 88–98</button>
+  <button class="tab"        onclick="showPanel('table',event)">Data Table</button>
+</div>
+
+<!-- FULL RING -->
+<div id="panel-full" class="panel active">
+  <div class="ring-wrap">
+    <canvas id="c-full" class="ring-canvas"></canvas>
+  </div>
+  <p class="note">The metallic cluster (purple band) sits near the top of the ring at n ≈ 91–97, tightly bracketing n_H = 92.19. <span>He sits just below the ceiling; semiconductors spread upward.</span> The full 201.87-octave ring is shown for context.</p>
+</div>
+
+<!-- ZOOMED -->
+<div id="panel-zoom" class="panel">
+  <div class="ring-wrap" style="width:min(92vw,560px)">
+    <canvas id="c-zoom" class="ring-canvas"></canvas>
+  </div>
+  <p class="note">Zoomed to n = 85–100. Each dot is a material's metallization energy on the Seraphim octave coordinate. <span>Materials below n_H require stellar/giant-planet pressures. Above it: lab-accessible or semiconducting.</span></p>
+</div>
+
+<!-- TABLE -->
+<div id="panel-table" class="panel">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Material</th>
+        <th>Type</th>
+        <th>E (eV)</th>
+        <th>n</th>
+        <th>Δ from n_H</th>
+        <th>Regime</th>
+      </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+  </table>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#66bb6a"></div>n_H ceiling (92.19)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ff5252"></div>Below ceiling (extreme pressure)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#e040fb"></div>Above ceiling (lab-accessible)</div>
+  <div class="legend-item"><div class="legend-box" style="background:rgba(224,64,251,0.15)"></div>Metallization cluster</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ffb300"></div>n_BBH = 5.314</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#80cbc4"></div>n_flip = 3.561</div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+const N_HUB = 201.87;
+const N_H   = 92.19;
+
+// ── Material data ─────────────────────────────────────────────────────────────
+const MATERIALS = [
+  { label:'He\n(theoretical)', E:25.0, color:'#ff5252', r:7,
+    desc:'Helium. Requires ~25 TPa. Only in stellar cores. Extreme case.', type:'Noble gas' },
+  { label:'H₂\nMetallic', E:10.0, color:'#e040fb', r:11,
+    desc:'Hydrogen. ~400–500 GPa in DAC. GW190814 secondary sits at same compactness regime.', type:'Diatomic' },
+  { label:'Xe', E:9.3, color:'#e040fb', r:7,
+    desc:'Xenon. Metallizes ~150 GPa. Noble gas — high ionization despite large atom.', type:'Noble gas' },
+  { label:'Ne', E:8.5, color:'#ff5252', r:6,
+    desc:'Neon. Very high pressure required. Sits just below n_H.', type:'Noble gas' },
+  { label:'N₂', E:7.0, color:'#e040fb', r:7,
+    desc:'Nitrogen. Band gap ~7 eV. Molecular solid at high pressure.', type:'Diatomic' },
+  { label:'O₂', E:6.0, color:'#e040fb', r:7,
+    desc:'Oxygen. Metallizes ~100 GPa. Molecular solid.', type:'Diatomic' },
+  { label:'BN', E:6.4, color:'#e040fb', r:6,
+    desc:'Boron nitride. Wide bandgap 6.4 eV. Isoelectronic with carbon.', type:'Compound' },
+  { label:'Diamond\n(C)', E:5.5, color:'#e040fb', r:8,
+    desc:'Carbon / diamond. Band gap 5.5 eV. Hardest natural material.', type:'Elemental' },
+  { label:'S\n(sulfur)', E:2.7, color:'#e040fb', r:7,
+    desc:'Sulfur. Metallizes ~95 GPa. Room-temperature superconductor candidate under pressure.', type:'Elemental' },
+  { label:'I₂\n(iodine)', E:2.5, color:'#e040fb', r:7,
+    desc:'Iodine. Metallizes ~16 GPa. Lowest pressure metallization in the set.', type:'Molecular' },
+  { label:'GaAs', E:1.42, color:'#ce93d8', r:6,
+    desc:'Gallium arsenide. Semiconductor 1.42 eV. Direct bandgap, optoelectronics.', type:'Semiconductor' },
+  { label:'Si', E:1.12, color:'#ce93d8', r:8,
+    desc:'Silicon. Semiconductor 1.12 eV. Metallizes ~12 GPa. Basis of modern electronics.', type:'Semiconductor' },
+  { label:'Ge', E:0.67, color:'#ce93d8', r:7,
+    desc:'Germanium. Semiconductor 0.67 eV. Metallizes ~10 GPa.', type:'Semiconductor' },
+  { label:'InAs', E:0.35, color:'#ce93d8', r:6,
+    desc:'Indium arsenide. Narrow gap 0.35 eV. Near-metal at ambient.', type:'Semiconductor' },
+];
+
+// ── Compute n values ──────────────────────────────────────────────────────────
+const h_J  = 6.626e-34;
+const nu_P = 1.855e43;
+const eV_J = 1.602e-19;
+
+MATERIALS.forEach(m => {
+  const E_J = m.E * eV_J;
+  m.n = Math.log2(h_J * nu_P / E_J);
+  m.delta = m.n - N_H;
+});
+
+// Reference scales (background context on full ring)
+const REFS = [
+  { n:3.561,  label:'n_flip',           color:'#80cbc4', r:7  },
+  { n:5.314,  label:'n_BBH',            color:'#ffb300', r:10 },
+  { n:59.41,  label:'EW',               color:'#ba68c8', r:5  },
+  { n:68.8,   label:'QCD',              color:'#9575cd', r:5  },
+  { n:92.19,  label:'n_H\nceiling',     color:'#66bb6a', r:10 },
+  { n:108.0,  label:'CMB',              color:'#26c6da', r:8  },
+];
+
+// ── Geometry ──────────────────────────────────────────────────────────────────
+function nToAngle(n, circ=N_HUB) { return Math.PI/2 - (n/circ)*2*Math.PI; }
+function nToXY(n, r, cx, cy, circ=N_HUB) {
+  const a = nToAngle(n, circ);
+  return [cx + r*Math.cos(a), cy - r*Math.sin(a)];
+}
+function arcFill(ctx, cx, cy, rIn, rOut, n1, n2, color, circ=N_HUB) {
+  const a1 = -(nToAngle(n1,circ));
+  const a2 = -(nToAngle(n2,circ));
+  ctx.beginPath();
+  ctx.arc(cx,cy,rOut,a1,a2,false);
+  ctx.arc(cx,cy,rIn, a2,a1,true);
+  ctx.closePath(); ctx.fillStyle=color; ctx.fill();
+}
+
+function drawDot(ctx, x, y, s, glow) {
+  if(glow) {
+    const g = ctx.createRadialGradient(x,y,0,x,y,s.r*3);
+    g.addColorStop(0,s.color+'55'); g.addColorStop(1,'transparent');
+    ctx.beginPath(); ctx.arc(x,y,s.r*3,0,Math.PI*2);
+    ctx.fillStyle=g; ctx.fill();
+  }
+  ctx.beginPath(); ctx.arc(x,y,s.r,0,Math.PI*2);
+  ctx.fillStyle=s.color; ctx.strokeStyle='#00000088'; ctx.lineWidth=1;
+  ctx.fill(); ctx.stroke();
+}
+
+// ── FULL RING ─────────────────────────────────────────────────────────────────
+function drawFull() {
+  const canvas = document.getElementById('c-full');
+  const dpr = window.devicePixelRatio||1;
+  const size = canvas.parentElement.offsetWidth;
+  canvas.width = size*dpr; canvas.height = size*dpr;
+  canvas.style.width = size+'px'; canvas.style.height = size+'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const cx=size/2, cy=size/2, R=size*0.38;
+  ctx.clearRect(0,0,size,size);
+
+  // base ring
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+  ctx.strokeStyle='#1e2240'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,R*0.88,0,Math.PI*2);
+  ctx.strokeStyle='#12152a'; ctx.lineWidth=.8; ctx.stroke();
+
+  // BBH band
+  arcFill(ctx,cx,cy,R*.87,R, 4.5,6.0,'rgba(255,179,0,0.18)');
+
+  // metallization cluster band  n~90.5 to ~98
+  arcFill(ctx,cx,cy,R*.87,R, 90.5,98.0,'rgba(224,64,251,0.13)');
+
+  // n_H ceiling line
+  const [nhx1,nhy1]=nToXY(N_H,R*.84,cx,cy);
+  const [nhx2,nhy2]=nToXY(N_H,R*1.03,cx,cy);
+  ctx.beginPath(); ctx.moveTo(nhx1,nhy1); ctx.lineTo(nhx2,nhy2);
+  ctx.strokeStyle='#66bb6a'; ctx.lineWidth=1.2;
+  ctx.setLineDash([3,4]); ctx.stroke(); ctx.setLineDash([]);
+
+  // tick marks every 20 oct
+  for(let n=0; n<N_HUB; n+=20) {
+    const [x1,y1]=nToXY(n,R*.88,cx,cy);
+    const [x2,y2]=nToXY(n,R+4,cx,cy);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+    ctx.strokeStyle='#2a2f50'; ctx.lineWidth=.7; ctx.stroke();
+    const [xl,yl]=nToXY(n,R+14,cx,cy);
+    ctx.fillStyle='#2a2f50'; ctx.font="8px 'Space Mono',monospace";
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(n,xl,yl);
+  }
+
+  // centre text
+  ctx.fillStyle='#aaaacc'; ctx.font="italic 11px 'Crimson Pro',serif";
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('n(C) = 3.561 + 3.506×C', cx, cy+8);
+  ctx.fillStyle='#444466'; ctx.font="9px 'Space Mono',monospace";
+  ctx.fillText('metallization cluster: n ≈ 91–97', cx, cy+24);
+
+  // ref dots (dim)
+  REFS.forEach(s => {
+    const [dx,dy]=nToXY(s.n,R,cx,cy);
+    drawDot(ctx,dx,dy,{...s,r:s.r,color:s.color+'99'},false);
+    // small label
+    const lr=R+18;
+    const [lx,ly]=nToXY(s.n,lr,cx,cy);
+    ctx.font="7px 'Space Mono',monospace";
+    ctx.fillStyle=s.color+'88';
+    ctx.textAlign=lx<cx?'right':(Math.abs(lx-cx)<20?'center':'left');
+    ctx.textBaseline=ly<cy?'bottom':'top';
+    ctx.fillText(s.label.split('\n')[0],lx,ly);
+  });
+
+  // material dots
+  const hits = [];
+  MATERIALS.forEach(m => {
+    const [dx,dy]=nToXY(m.n,R,cx,cy);
+    drawDot(ctx,dx,dy,m, m.r>=9);
+    hits.push({x:dx,y:dy,r:m.r+7,s:m});
+  });
+  canvas._hits = hits;
+}
+
+// ── ZOOMED (n=85 to 100) ─────────────────────────────────────────────────────
+function drawZoom() {
+  const canvas = document.getElementById('c-zoom');
+  const dpr = window.devicePixelRatio||1;
+  const size = canvas.parentElement.offsetWidth;
+  canvas.width = size*dpr; canvas.height = size*dpr;
+  canvas.style.width = size+'px'; canvas.style.height = size+'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const CIRC = 15;   // show 15-octave window: n=85 to n=100
+  const N_OFF = 85;  // offset: what value sits at n=0 of this zoomed ring
+  const cx=size/2, cy=size/2, R=size*0.37;
+  ctx.clearRect(0,0,size,size);
+
+  function nz(n) { return n - N_OFF; } // shifted coordinate
+
+  function nzToXY(n, r) {
+    const a = nToAngle(nz(n), CIRC);
+    return [cx + r*Math.cos(a), cy - r*Math.sin(a)];
+  }
+  function arcFillZ(ctx,rIn,rOut,n1,n2,color) {
+    const a1=-(nToAngle(nz(n1),CIRC));
+    const a2=-(nToAngle(nz(n2),CIRC));
+    ctx.beginPath();
+    ctx.arc(cx,cy,rOut,a1,a2,false);
+    ctx.arc(cx,cy,rIn, a2,a1,true);
+    ctx.closePath(); ctx.fillStyle=color; ctx.fill();
+  }
+
+  // base ring
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+  ctx.strokeStyle='#1e2240'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,R*0.88,0,Math.PI*2);
+  ctx.strokeStyle='#12152a'; ctx.lineWidth=.8; ctx.stroke();
+
+  // fill: below n_H (extreme pressure zone)
+  arcFillZ(ctx,R*.87,R, 85,N_H,'rgba(255,82,82,0.10)');
+  // fill: above n_H (lab/semiconductor zone)
+  arcFillZ(ctx,R*.87,R, N_H,100,'rgba(224,64,251,0.10)');
+
+  // n_H ceiling line (prominent)
+  const [nhx1,nhy1]=nzToXY(N_H,R*.82);
+  const [nhx2,nhy2]=nzToXY(N_H,R*1.05);
+  ctx.beginPath(); ctx.moveTo(nhx1,nhy1); ctx.lineTo(nhx2,nhy2);
+  ctx.strokeStyle='#66bb6a'; ctx.lineWidth=1.8;
+  ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+
+  // tick every octave
+  for(let n=85; n<=100; n++) {
+    const isMajor = (n % 5 === 0);
+    const [x1,y1]=nzToXY(n,R*(isMajor?.86:.90));
+    const [x2,y2]=nzToXY(n,R*(isMajor?1.02:1.00));
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+    ctx.strokeStyle=isMajor?'#3a4070':'#1e2240'; ctx.lineWidth=isMajor?.9:.5; ctx.stroke();
+    if(isMajor) {
+      const [xl,yl]=nzToXY(n,R*1.12);
+      ctx.fillStyle='#404060'; ctx.font="8px 'Space Mono',monospace";
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(n,xl,yl);
+    }
+  }
+
+  // n_H label
+  const [hlx,hly]=nzToXY(N_H,R*1.16);
+  ctx.font="bold 8px 'Space Mono',monospace";
+  ctx.fillStyle='#66bb6a';
+  ctx.textAlign=hlx<cx?'right':'left';
+  ctx.textBaseline=hly<cy?'bottom':'top';
+  ctx.fillText('n_H = 92.19',hlx+(hlx<cx?-4:4),hly);
+
+  // centre text
+  ctx.fillStyle='#aaaacc'; ctx.font="italic 10px 'Crimson Pro',serif";
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('Zoomed: n = 85 → 100', cx, cy-10);
+  ctx.fillStyle='#ff5252'; ctx.font="7px 'Space Mono',monospace";
+  ctx.fillText('← extreme pressure', cx-30, cy+8);
+  ctx.fillStyle='#e040fb';
+  ctx.fillText('lab-accessible →', cx+20, cy+20);
+
+  // material dots
+  const hits = [];
+  const visible = MATERIALS.filter(m => m.n >= 85 && m.n <= 100);
+
+  // Draw radial connector lines to avoid overlap
+  visible.forEach(m => {
+    const [dx,dy]=nzToXY(m.n,R);
+    const lr = R + (m.r > 8 ? 34 : 26);
+    const [lx,ly]=nzToXY(m.n,lr);
+    ctx.beginPath(); ctx.moveTo(dx,dy); ctx.lineTo(lx,ly);
+    ctx.strokeStyle=m.color+'55'; ctx.lineWidth=.6; ctx.stroke();
+  });
+
+  // dots
+  visible.forEach(m => {
+    const [dx,dy]=nzToXY(m.n,R);
+    drawDot(ctx,dx,dy,m, m.r>=9);
+    hits.push({x:dx,y:dy,r:m.r+8,s:m});
+
+    // label
+    const lr = R + (m.r > 8 ? 38 : 30);
+    const [lx,ly]=nzToXY(m.n,lr);
+    const lines=m.label.split('\n');
+    ctx.font=`${m.r>8?8:7}px 'Space Mono',monospace`;
+    ctx.fillStyle=m.color;
+    ctx.textAlign=lx<cx?'right':(Math.abs(lx-cx)<25?'center':'left');
+    ctx.textBaseline=ly<cy?'bottom':'top';
+    lines.forEach((l,i)=>ctx.fillText(l,lx,ly+i*9));
+  });
+
+  // n_H dot
+  const [nhdx,nhdy]=nzToXY(N_H,R);
+  drawDot(ctx,nhdx,nhdy,{r:11,color:'#66bb6a'},true);
+  hits.push({x:nhdx,y:nhdy,r:18,s:{label:'n_H condensation\nceiling',n:N_H,delta:0,desc:'Section 4.1 confirmed. Zero violations across all 118 elements. Metallization threshold.',E:'—',type:'Framework anchor'}});
+
+  canvas._hits = hits;
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+function buildTable() {
+  const tbody = document.getElementById('table-body');
+  const sorted = [...MATERIALS].sort((a,b)=>a.n-b.n);
+  // insert n_H anchor row
+  const anchor = { label:'── n_H CEILING ──', E:'—', n:N_H, delta:0, color:'#66bb6a', type:'Framework anchor', isAnchor:true };
+  sorted.splice(sorted.findIndex(m=>m.n>N_H), 0, anchor);
+
+  sorted.forEach(m => {
+    const tr = document.createElement('tr');
+    const dSign = m.delta > 0 ? '+' : '';
+    const dClass = m.isAnchor ? 'anchor' : (m.delta < 0 ? 'below-h' : 'above-h');
+    const regime = m.isAnchor ? '— threshold —' : (m.delta < 0 ? 'Stellar / giant-planet only' : (m.delta < 2 ? 'DAC / extreme lab' : 'Semiconductor / lab'));
+    tr.innerHTML = `
+      <td style="color:${m.color||'var(--hcond)'}">${m.label.replace('\n',' ')}</td>
+      <td style="color:var(--dim)">${m.type||'—'}</td>
+      <td style="color:var(--text)">${m.E||'—'}</td>
+      <td class="n-val">${m.isAnchor ? '92.19' : m.n.toFixed(3)}</td>
+      <td class="${dClass}">${m.isAnchor ? '0' : dSign+m.delta.toFixed(3)}</td>
+      <td style="color:var(--dim);font-size:.55rem">${regime}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Tooltip ───────────────────────────────────────────────────────────────────
+const tip = document.getElementById('tooltip');
+function showTip(s, ev) {
+  const dSign = s.delta > 0 ? '+' : '';
+  tip.innerHTML = `<div class="name">${s.label.replace('\n',' ')}</div>
+    <div class="n-val">n = ${s.n.toFixed(4)}</div>
+    <div class="delta">Δ from n_H = ${dSign}${s.delta.toFixed(4)} oct</div>
+    <div class="desc">${s.desc}</div>`;
+  tip.style.display='block'; moveTip(ev);
+}
+function moveTip(ev) {
+  let x=ev.clientX+14, y=ev.clientY-10;
+  if(x+250>window.innerWidth) x=ev.clientX-260;
+  tip.style.left=x+'px'; tip.style.top=y+'px';
+}
+function hideTip() { tip.style.display='none'; }
+
+function attachMouse(id) {
+  const c = document.getElementById(id);
+  c.addEventListener('mousemove', ev => {
+    const rect=c.getBoundingClientRect();
+    const mx=ev.clientX-rect.left, my=ev.clientY-rect.top;
+    if(!c._hits) return;
+    let hit=null;
+    for(const h of c._hits) { if(Math.hypot(mx-h.x,my-h.y)<h.r){hit=h;break;} }
+    if(hit){ c.style.cursor='pointer'; showTip(hit.s,ev); }
+    else   { c.style.cursor='default'; hideTip(); }
+  });
+  c.addEventListener('mouseleave', hideTip);
+}
+
+// ── Panel switching ───────────────────────────────────────────────────────────
+function showPanel(id, ev) {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  ev.target.classList.add('active');
+  if(id==='full') drawFull();
+  if(id==='zoom') drawZoom();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  drawFull();
+  buildTable();
+  attachMouse('c-full');
+  attachMouse('c-zoom');
+});
+window.addEventListener('resize', () => {
+  if(document.getElementById('panel-full').classList.contains('active')) drawFull();
+  if(document.getElementById('panel-zoom').classList.contains('active')) drawZoom();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seraphim — The Matter Timeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@300;400;500;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink:        #0d0d0f;
+    --parchment:  #f5f0e8;
+    --cream:      #ede7d6;
+    --gold:       #c9941a;
+    --gold-dim:   #8a6510;
+    --amber:      #e8850a;
+    --rust:       #c44a1a;
+    --sage:       #3a6b4a;
+    --slate:      #3d4f6e;
+    --muted:      #6b6355;
+    --line:       rgba(90,75,55,0.18);
+
+    /* stage colors */
+    --c-planck:   #5a2d82;
+    --c-gut:      #1a5c8a;
+    --c-ew:       #1a7a5c;
+    --c-qcd:      #2e7a1a;
+    --c-atomic:   #7a6e1a;
+    --c-matter:   #c9941a;
+    --c-stellar:  #c44a1a;
+    --c-compact:  #8a1a1a;
+    --c-bh:       #2a0a0a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--parchment);
+    color: var(--ink);
+    font-family: 'Libre Baskerville', Georgia, serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    padding: 3.5rem 3rem 2rem;
+    border-bottom: 2px solid var(--ink);
+    position: relative;
+    background: var(--cream);
+  }
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 0; right: 0;
+    height: 2px;
+    background: var(--gold);
+  }
+  .header-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.9rem;
+  }
+  h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2.2rem, 5vw, 4rem);
+    font-weight: 300;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--gold-dim);
+  }
+  .header-sub {
+    margin-top: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    line-height: 1.9;
+  }
+  .eq-strip {
+    margin-top: 1.4rem;
+    display: flex;
+    gap: 2.5rem;
+    flex-wrap: wrap;
+  }
+  .eq {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    background: var(--ink);
+    color: var(--parchment);
+    padding: 0.45rem 0.9rem;
+    letter-spacing: 0.05em;
+  }
+  .eq span { color: var(--gold); }
+
+  /* ── LAYOUT ── */
+  .page {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: calc(100vh - 180px);
+  }
+
+  /* ── LEFT SPINE — the n axis ── */
+  .spine {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    border-right: 2px solid var(--ink);
+    background: var(--ink);
+    color: var(--parchment);
+    padding: 1.5rem 0;
+    scrollbar-width: none;
+  }
+  .spine::-webkit-scrollbar { display: none; }
+
+  .spine-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.52rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(245,240,232,0.35);
+    padding: 0 1rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 0.5rem;
+  }
+
+  .tick {
+    display: flex;
+    align-items: center;
+    padding: 0.22rem 0.9rem 0.22rem 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-left: 3px solid transparent;
+    gap: 0.5rem;
+  }
+  .tick:hover { background: rgba(255,255,255,0.06); }
+  .tick.active { background: rgba(255,255,255,0.1); }
+  .tick.starred { border-left-color: var(--gold); }
+  .tick-n {
+    min-width: 42px;
+    color: var(--gold);
+    font-weight: 700;
+  }
+  .tick-name {
+    color: rgba(245,240,232,0.75);
+    line-height: 1.35;
+    font-size: 0.55rem;
+  }
+  .tick-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  /* ── RIGHT — stage cards ── */
+  .stages {
+    padding: 0;
+    overflow-y: auto;
+  }
+
+  .stage {
+    border-bottom: 1px solid var(--line);
+    padding: 0;
+    scroll-margin-top: 0;
+  }
+
+  .stage-header {
+    display: grid;
+    grid-template-columns: 72px 1fr;
+    align-items: stretch;
+    cursor: pointer;
+    user-select: none;
+  }
+  .stage-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.8rem;
+    font-weight: 300;
+    color: rgba(13,13,15,0.12);
+    border-right: 1px solid var(--line);
+    padding: 1.6rem 0;
+    transition: color 0.2s;
+  }
+  .stage-header:hover .stage-number { color: rgba(13,13,15,0.3); }
+
+  .stage-title-block {
+    padding: 1.5rem 2rem 1.4rem;
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+  }
+  .stage-era {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    opacity: 0.5;
+  }
+  .stage-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.55rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    flex: 1;
+  }
+  .stage-n-range {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    background: var(--ink);
+    color: var(--parchment);
+    padding: 0.3rem 0.7rem;
+    white-space: nowrap;
+  }
+  .stage-n-range span { color: var(--gold); }
+
+  .stage-body {
+    display: none;
+    padding: 0 2rem 2rem 7rem;
+  }
+  .stage.open .stage-body { display: block; }
+
+  /* Stage body content */
+  .stage-desc {
+    font-size: 0.88rem;
+    line-height: 1.8;
+    color: #2a2820;
+    max-width: 680px;
+    margin-bottom: 1.5rem;
+    font-style: italic;
+    border-left: 2px solid var(--gold);
+    padding-left: 1rem;
+  }
+
+  /* Entries in a stage */
+  .entries {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .entry {
+    display: grid;
+    grid-template-columns: 70px 1fr auto;
+    align-items: baseline;
+    gap: 0.8rem 1.2rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .entry:last-child { border-bottom: none; }
+
+  .entry-n {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--gold-dim);
+    text-align: right;
+  }
+  .entry-n.confirmed { color: var(--rust); }
+  .entry-n.seraphim  { color: var(--sage); }
+
+  .entry-info {}
+  .entry-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: -0.01em;
+  }
+  .entry-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+    line-height: 1.6;
+  }
+  .entry-math {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--slate);
+    text-align: right;
+    max-width: 240px;
+    line-height: 1.7;
+    white-space: nowrap;
+  }
+  @media (max-width: 700px) {
+    .entry { grid-template-columns: 60px 1fr; }
+    .entry-math { grid-column: 2; text-align: left; white-space: normal; }
+  }
+
+  /* badges */
+  .badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.46rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.45rem;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+  }
+  .badge-confirmed { background: var(--sage); color: #fff; }
+  .badge-seraphim  { background: var(--rust); color: #fff; }
+  .badge-known     { background: var(--slate); color: #fff; }
+  .badge-derived   { background: var(--gold-dim); color: #fff; }
+
+  /* divider within stage */
+  .sub-divider {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-top: 1px solid var(--line);
+    padding-top: 0.8rem;
+    margin: 1rem 0 0.5rem;
+  }
+
+  /* Stage color accents */
+  .stage[data-era="planck"]  .stage-title { color: var(--c-planck); }
+  .stage[data-era="gut"]     .stage-title { color: var(--c-gut); }
+  .stage[data-era="ew"]      .stage-title { color: var(--c-ew); }
+  .stage[data-era="qcd"]     .stage-title { color: var(--c-qcd); }
+  .stage[data-era="atomic"]  .stage-title { color: var(--c-atomic); }
+  .stage[data-era="matter"]  .stage-title { color: var(--c-matter); }
+  .stage[data-era="stellar"] .stage-title { color: var(--c-stellar); }
+  .stage[data-era="compact"] .stage-title { color: var(--c-compact); }
+  .stage[data-era="bh"]      .stage-title { color: var(--c-bh); }
+
+  .stage[data-era="planck"]  .stage-number { color: rgba(90,45,130,0.12); }
+  .stage[data-era="planck"]  .stage-header:hover .stage-number { color: rgba(90,45,130,0.35); }
+
+  /* open indicator */
+  .chevron {
+    font-size: 0.7rem;
+    transition: transform 0.2s;
+    margin-left: auto;
+    color: var(--muted);
+  }
+  .stage.open .chevron { transform: rotate(180deg); }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    padding: 1rem 2rem;
+    background: var(--cream);
+    border-bottom: 1px solid var(--line);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+  }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 1px; }
+
+  /* Ruler across top of stages */
+  .ruler {
+    position: relative;
+    height: 28px;
+    background: var(--ink);
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+  }
+  .ruler-fill {
+    height: 100%;
+    background: linear-gradient(90deg,
+      var(--c-planck) 0%, var(--c-gut) 5%, var(--c-ew) 10%,
+      var(--c-qcd) 18%, var(--c-atomic) 32%, var(--c-matter) 50%,
+      var(--c-stellar) 72%, var(--c-compact) 88%, var(--c-bh) 100%);
+    width: 100%;
+    opacity: 0.7;
+  }
+  .ruler-label {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.5rem;
+    letter-spacing: 0.18em;
+    color: rgba(245,240,232,0.7);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* Footer */
+  footer {
+    padding: 2rem 3rem;
+    border-top: 2px solid var(--ink);
+    background: var(--ink);
+    color: rgba(245,240,232,0.5);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.58rem;
+    line-height: 2;
+    letter-spacing: 0.06em;
+  }
+  footer span { color: var(--gold); }
+
+  @media (max-width: 900px) {
+    .page { grid-template-columns: 1fr; }
+    .spine { position: relative; height: auto; max-height: 260px; border-right: none; border-bottom: 2px solid; }
+    .stage-body { padding-left: 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-eyebrow">Seraphim LQG Framework · v18.3 · DOI: 10.5281/zenodo.18852768</div>
+  <h1>The <em>Matter</em> Timeline</h1>
+  <div class="header-sub">
+    Octave depth n = log₂(νP / ν) &nbsp;·&nbsp; νP = 1.855 × 10⁴³ Hz &nbsp;·&nbsp; n runs 0 → 201.87<br>
+    Compact objects: n(C) = 3.561 + 3.506 × C &nbsp;·&nbsp; C = Rs/2R &nbsp;·&nbsp; K₀ = 1.1467 × 10⁸⁴ Hz²
+  </div>
+  <div class="eq-strip">
+    <div class="eq">n_flip = <span>3.561</span> &nbsp;|&nbsp; n_BBH = <span>5.314</span></div>
+    <div class="eq">n(C) = <span>3.561</span> + <span>3.506</span> × C</div>
+    <div class="eq">C_eff(n) = (n − <span>3.561</span>) / <span>3.506</span></div>
+    <div class="eq">n_H = <span>92.19</span> &nbsp;·&nbsp; all 118 elements sorted ✓</div>
+  </div>
+</header>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--sage)"></div>CONFIRMED (264 events)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--rust)"></div>SERAPHIM DERIVED</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--slate)"></div>KNOWN PHYSICS</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--gold-dim)"></div>DERIVED / SPECULATIVE</div>
+  <div class="legend-item" style="margin-left:auto; color:var(--muted)">★ = Seraphim anchor · click stage to expand</div>
+</div>
+
+<div class="page">
+
+  <!-- LEFT SPINE -->
+  <nav class="spine" id="spine">
+    <div class="spine-label">n · scale · object</div>
+
+    <!-- filled by JS -->
+  </nav>
+
+  <!-- RIGHT STAGES -->
+  <main class="stages" id="stages">
+    <div class="ruler"><div class="ruler-fill"></div><span class="ruler-label">Planck → Hubble · 202 octaves of creation</span></div>
+  </main>
+
+</div>
+
+<footer>
+  Seraphim LQG Framework &nbsp;·&nbsp; <span>n(C) = 3.561 + 3.506 × C</span> &nbsp;·&nbsp; K₀ = 1.1467 × 10⁸⁴ Hz² &nbsp;·&nbsp; Zero free parameters &nbsp;·&nbsp; DOI: 10.5281/zenodo.18852768<br>
+  Compact-object space: C = Rₛ/2R &nbsp;·&nbsp; Planck-frequency space: n = log₂(νP/ν) &nbsp;·&nbsp; n_K0 = 2·n_P − 8.229
+</footer>
+
+<script>
+// ─────────────────────────────────────────────────
+//  DATA
+// ─────────────────────────────────────────────────
+const STAGES = [
+  {
+    num: 1,
+    era: "planck",
+    title: "The Planck Wall & LQG Origin",
+    etime: "t = 0 · Planck epoch",
+    nrange: [0, 5.5],
+    desc: "The universe begins at n = 0: the Planck frequency floor where spacetime itself is quantized. LQG spin networks form. The Seraphim framework's geometric origin — n_flip = 3.561 — is the realm boundary where the electromagnetic and gravitational uncertainty axes are indistinguishable. C = 0.5 defines the black hole horizon from first principles, giving n_BBH = 5.314 with zero free parameters.",
+    entries: [
+      { n: "0.000",    name: "Planck Wall",          sub: "νP = 1.855 × 10⁴³ Hz · quantum geometry floor",      math: "n = 0 by definition\nνP = √(c⁵/ħG)", status: "known" },
+      { n: "1.808",    name: "Anti-horizon / C = −0.5", sub: "De Sitter saturation · dark sector mirror",       math: "n_anti = n_flip + slope × (−0.5)\n= 3.561 − 1.753 = 1.808", status: "derived" },
+      { n: "3.561 ★",  name: "n_flip — Geometric Origin", sub: "Realm boundary · LQG singularity floor · ALL normal matter clusters here gravitationally", math: "γ_entropy = 0.12738\nΔx = √(Aⱼ/π) = 0.94 ℓP\nn_flip = log₂(K₀/ν_flip²)", status: "seraphim" },
+      { n: "4.98",     name: "Reduced Planck Mass",   sub: "2.4 × 10¹⁸ GeV · gravity unification",             math: "n_P = log₂(νP / ν)\nm_Pl_red = 2.435 × 10¹⁸ GeV", status: "known" },
+      { n: "5.314 ★",  name: "n_BBH — BBH Merger Band", sub: "★ 264 events confirmed across GWTC-2.1/3/4 · zero free parameters", math: "C = 0.5 (BH horizon)\nn = 3.561 + 3.506 × 0.5\nK₀ = ħ²c²/(32γℓP²h²)", status: "seraphim" },
+    ]
+  },
+  {
+    num: 2,
+    era: "gut",
+    title: "GUT Desert & Symmetry Breaking",
+    etime: "t ~ 10⁻³⁸ s · GUT epoch",
+    nrange: [5.5, 22],
+    desc: "The GUT desert: 10 barren octaves where no stable particles form, the universe in pure de Sitter expansion. The chi(S²) ladder step 2.03 — equal to the Euler characteristic of the sphere — governs the desert walls. The string scale lower wall hits ladder rung 3 to within 0.019 octaves.",
+    entries: [
+      { n: "9.58",   name: "String Scale",           sub: "~10¹⁷ GeV · desert lower wall · chi ladder rung 3",  math: "n_flip + 3 × χ(S²)\n= 3.561 + 3 × 2.03 = 9.65\nΔ = 0.019 oct ✓", status: "known" },
+      { n: "11.9",   name: "SU(5) GUT Scale",        sub: "~2 × 10¹⁶ GeV",                                     math: "n = log₂(νP / ν_GUT)\nΔ from chi rung = 0.35 oct", status: "known" },
+      { n: "14.55",  name: "Desert Center",           sub: "C_eff ≈ π · de Sitter expansion maximal",           math: "C_eff = (n−3.561)/3.506\n= 11/3.506 ≈ π (0.13% error)", status: "derived" },
+      { n: "19.6",   name: "Seesaw / ν_R Scale",     sub: "~10¹⁴ GeV · right-handed neutrino mass · desert upper wall", math: "n_flip + 8 × χ(S²)\n= 3.561 + 8 × 2.03 = 19.80\nΔ = 0.011 oct ✓", status: "known" },
+    ]
+  },
+  {
+    num: 3,
+    era: "ew",
+    title: "Electroweak Symmetry Breaking",
+    etime: "t ~ 10⁻¹² s · EW epoch",
+    nrange: [55, 62],
+    desc: "The electroweak phase transition: W/Z bosons acquire mass, the Higgs field settles. The photon decouples from weak force. This scale anchors the chi(S²) ladder and projects antipodally across the 202-octave ring to the AION/AEDGE gravitational wave target band at 9.99 μHz.",
+    entries: [
+      { n: "59.1",  name: "Higgs Boson",             sub: "125 GeV · electroweak symmetry breaking",            math: "n = log₂(νP / ν)\nν = E_H/h = 3.02 × 10²⁵ Hz", status: "known" },
+      { n: "59.5",  name: "Z / W Boson",             sub: "91.2 GeV · EW symmetry breaking · chi ladder anchor", math: "n = log₂(νP / ν_Z)\nEW antipode: n = 160.4\n→ 9.99 μHz (AEDGE target)", status: "known" },
+    ]
+  },
+  {
+    num: 4,
+    era: "qcd",
+    title: "QCD Confinement — Quarks → Hadrons",
+    etime: "t ~ 10⁻⁵ s · QCD epoch",
+    nrange: [62, 70],
+    desc: "Quarks condense into protons and neutrons. The QCD transition sets the mass floor for all nuclear matter. The antipodal ring projection of n_QCD = 68.80 lands at 14.89 nHz — directly in the NANOGrav pulsar timing band where the 2023 gravitational wave background was detected. QCD set the condensation floor; its ring antipode is the emission frequency of merging supermassive black holes built from that matter.",
+    entries: [
+      { n: "66.15", name: "Proton / Neutron",        sub: "938 MeV · nuclear matter floor · all baryonic matter", math: "n = log₂(νP / ν_p)\nν_p = m_p c²/h = 2.27 × 10²³ Hz", status: "known" },
+      { n: "68.80", name: "QCD Confinement",         sub: "~150 MeV · quarks → hadrons · NANOGrav antipode",     math: "QCD antipode: n = 169.7\n→ 14.89 nHz (NANOGrav 2023)\nΔ chi k=83: 0.174 oct", status: "known" },
+    ]
+  },
+  {
+    num: 5,
+    era: "atomic",
+    title: "Atomic Matter & The Condensation Ceiling",
+    etime: "t ~ 380,000 yr · recombination",
+    nrange: [70, 95],
+    desc: "Electrons bind to nuclei. Chemistry becomes possible. The hydrogen condensation ceiling n_H = 92.19 — derived from K₀ and the Robertson minimum — correctly sorts all 118 elements by physical state at standard conditions with zero free parameters and zero violations. All 118 elements fall in C_eff range 25.0–25.8, a 2.66-octave window.",
+    entries: [
+      { n: "76.99", name: "Electron",               sub: "0.511 MeV rest mass · QED",                           math: "n = log₂(νP / ν_e)\nν_e = m_e c²/h = 1.24 × 10²⁰ Hz", status: "known" },
+      { n: "92.19 ★", name: "n_H — Condensation Ceiling", sub: "H first ionization 13.598 eV · all 118 elements sorted · zero violations", math: "n = log₂(νP / ν_H)\nν_H = E_ion/h = 3.29 × 10¹⁵ Hz\nC_eff = (92.19−3.561)/3.506 = 25.28", status: "seraphim" },
+      { n: "~93-95", name: "Heaviest elements (Og, Ts…)", sub: "C_eff ≈ 25.8 · 2.66-oct window for all 118", math: "All solids/liquids: n > 92.19\nAll permanent gases: n < 92.19\nΔ(Cl, Xe borderline): < 0.17 oct", status: "confirmed" },
+    ]
+  },
+  {
+    num: 6,
+    era: "matter",
+    title: "Planets, Moons & Solar System Bodies",
+    etime: "t ~ 9 Gyr · planet formation",
+    nrange: [92.2, 160],
+    desc: "All solar system bodies sit at n_flip = 3.561 in compact-object space — indistinguishable from the geometric floor. Their gravitational compactness C ~ 10⁻¹² to 10⁻⁶ produces shifts of nano-octaves. In Planck-frequency space their dynamical frequencies place them at n_P ≈ 156–157, well above n_H — they are fully condensed matter.",
+    entries: [
+      { n: "3.561 (C-space)", name: "Pluto",         sub: "M=1.3×10²² kg · R=1188 km · Rs=19.4 μm",           math: "C = 8.1×10⁻¹² → n+2.9×10⁻¹¹\nn_P(dyn) ≈ 156.8", status: "known" },
+      { n: "3.561 (C-space)", name: "Moon",          sub: "M=7.34×10²² kg · R=1737 km · Rs=109 μm",           math: "C = 3.1×10⁻¹¹ → n+1.1×10⁻¹⁰\nn_P(dyn) ≈ 156.4", status: "known" },
+      { n: "3.561 (C-space)", name: "Mercury",       sub: "M=3.30×10²³ kg · R=2440 km · Rs=490 μm",           math: "C = 1.0×10⁻¹⁰ → n+3.5×10⁻¹⁰\nn_P(dyn) ≈ 156.1", status: "known" },
+      { n: "3.561 (C-space)", name: "Mars",          sub: "M=6.42×10²³ kg · R=3390 km · Rs=953 μm",           math: "C = 1.4×10⁻¹⁰ → n+4.9×10⁻¹⁰\nn_P(dyn) ≈ 156.3", status: "known" },
+      { n: "3.561 (C-space)", name: "Venus",         sub: "M=4.87×10²⁴ kg · R=6052 km · Rs=7.23 mm",          math: "C = 6.0×10⁻¹⁰ → n+2.1×10⁻⁹\nn_P(dyn) ≈ 156.1", status: "known" },
+      { n: "3.561 (C-space)", name: "Earth",         sub: "M=5.97×10²⁴ kg · R=6371 km · Rs=8.87 mm",          math: "C = 7.0×10⁻¹⁰ → n+2.4×10⁻⁹\nn_P(dyn) ≈ 156.0", status: "known" },
+      { n: "3.561 (C-space)", name: "Uranus / Neptune", sub: "Rs ≈ 129–152 mm",                               math: "C ~ 2.5–3.1×10⁻⁹\nn_P(dyn) ≈ 156.0", status: "known" },
+      { n: "3.561 (C-space)", name: "Saturn",        sub: "M=5.68×10²⁶ kg · Rs=844 mm",                       math: "C = 7.2×10⁻⁹ → n+2.5×10⁻⁸\nn_P(dyn) ≈ 157.5", status: "known" },
+      { n: "3.561 (C-space)", name: "Jupiter",       sub: "M=1.90×10²⁷ kg · Rs=2.82 m",                       math: "C = 2.0×10⁻⁸ → n+7.1×10⁻⁸\nn_P(dyn) ≈ 157.1", status: "known" },
+      { n: "3.561007",        name: "Sun",           sub: "M=1.99×10³⁰ kg · Rs=2.95 km · largest normal object", math: "C = 2.1×10⁻⁶ → n+7.4×10⁻⁶\nn_P(dyn) ≈ 157.0", status: "known" },
+    ]
+  },
+  {
+    num: 7,
+    era: "stellar",
+    title: "Stellar Remnants — First Departure from n_flip",
+    etime: "t ~ 1–13 Gyr · stellar evolution",
+    nrange: [3.561, 4.165],
+    desc: "White dwarfs begin to separate from n_flip. Neutron stars — nuclear-density objects — finally climb the compactness ladder meaningfully, reaching n ≈ 4.17–4.50. This is the first regime where the n(C) equation shows measurable n above the floor.",
+    entries: [
+      { n: "3.5617",  name: "White Dwarf (~1 M☉)",  sub: "R ≈ 7000 km · C = 2.1×10⁻⁴ · first real departure", math: "Rs = 2.95 km\nC = 2.1×10⁻⁴\nn = 3.561 + 3.506×2.1×10⁻⁴ = 3.5617", status: "known" },
+      { n: "4.165",   name: "Neutron Star (1.4 M☉)", sub: "R ≈ 12 km · nuclear density · first major climb",   math: "Rs = 4.14 km · C = 0.172\nn = 3.561 + 3.506×0.172 = 4.165\nGW190425: C ≈ 0.158–0.180 → n ≈ 4.11–4.19 ✓", status: "confirmed" },
+      { n: "4.503",   name: "Neutron Star (2.0 M☉)", sub: "R ≈ 11 km · massive NS / near TOV limit",          math: "C = 0.269\nn = 3.561 + 3.506×0.269 = 4.503", status: "known" },
+      { n: "4.55–4.74", name: "NSBH (C ≈ 0.28–0.34)", sub: "NS component in NS-BH mergers",                  math: "n(C=0.28) = 4.54\nn(C=0.34) = 4.75\nGWTC-3 NSBH events: consistent ✓", status: "confirmed" },
+    ]
+  },
+  {
+    num: 8,
+    era: "compact",
+    title: "Approaching the Black Hole Horizon",
+    etime: "C → 0.5 · event horizon formation",
+    nrange: [4.5, 5.314],
+    desc: "As compactness approaches 0.5 (the Schwarzschild event horizon), octave depth climbs toward n_BBH = 5.314. BBH mergers lock to this value across three independent catalogs, 264 events, three observing runs. The Robertson minimum is saturated simultaneously in both uncertainty directions at C = 0.5.",
+    entries: [
+      { n: "~4.8–5.1", name: "Small BH (5–8 M☉)",  sub: "Stellar BH · mass gap boundary · C approaching 0.5", math: "Rs = 2GM/c² · C → 0.5\nn → 5.314 as R → Rs", status: "known" },
+      { n: "~5.1–5.25", name: "Mid BH (10–30 M☉)", sub: "Typical LIGO BBH component",                        math: "BH: C = Rs/2Rs = 0.5 exactly\nn = 3.561 + 3.506×0.5 = 5.314", status: "known" },
+      { n: "5.314 ★",  name: "n_BBH — Event Horizon", sub: "★ ALL black holes: C = 0.5 by definition · 264 events · 0.05σ from prediction", math: "Robertson saturation:\nΔx·Δp = ħ/2 in both axes\nC = 0.5 → n = 5.314 (exact)", status: "seraphim" },
+    ]
+  },
+  {
+    num: 9,
+    era: "bh",
+    title: "The Black Hole Population — LIGO Catalog",
+    etime: "GWTC-2.1 · GWTC-3 · GWTC-4 · 264 events",
+    nrange: [5.0, 5.6],
+    desc: "264 binary black hole mergers across three catalogs cluster at n = 5.314 ± 0.15. Median n confirmed at 5.314 to 0.05σ. Redshift invariance confirmed. Waveform independence confirmed (GWTC-2.1 delta = 0.070%). The compactness slope β = 0.814 measured across 6 independent 1M Monte Carlo runs.",
+    entries: [
+      { n: "5.31",   name: "Low-mass BBH (~10+10 M☉)", sub: "GWTC events near lower edge of band",            math: "n ~ 5.21–5.31\nwithin ±0.15 oct band ✓", status: "confirmed" },
+      { n: "5.314 ★", name: "BBH Band Center",         sub: "n_BBH = 5.314 · 264 events · 3 catalogs · 3 observing runs", math: "median(n_264) = 5.314\nσ ~ 0.15 oct\nbeta = 0.814 (6 × 1M MC runs)", status: "seraphim" },
+      { n: "5.35",   name: "High-mass BBH (~80+ M☉)",  sub: "GW150914 class and above · upper edge of band",  math: "n ~ 5.35–5.45\nbeta correction: n(η) = 5.314 + 0.72·log₂(η/η_ref)", status: "confirmed" },
+      { n: "5.314+", name: "IMBHs (>100 M☉)",          sub: "Intermediate mass BH mergers · approaching band edge", math: "C = 0.5 still holds\nn = 5.314 regardless of mass\nmass sets frequency, not n", status: "known" },
+    ]
+  },
+  {
+    num: 10,
+    era: "bh",
+    title: "Supermassive Black Holes & Cosmic Scales",
+    etime: "Galaxy center · AGN · cosmological",
+    nrange: [5.314, 201.87],
+    desc: "All black holes — stellar to supermassive — sit at n = 5.314 in compact-object space because C = 0.5 is a geometric identity for any Schwarzschild horizon. Above n_BBH, the framework ascends through the cosmic scales: CMB, LIGO band, axion window, Hubble horizon.",
+    entries: [
+      { n: "5.314",  name: "All SMBH (10⁶–10¹⁰ M☉)", sub: "Sgr A* (4×10⁶ M☉) · M87* (6.5×10⁹ M☉) · all sit at n=5.314", math: "C = 0.5 by definition\nn = 5.314 for ALL black holes\nmass → GW frequency, not n", status: "known" },
+      { n: "108.0",  name: "CMB Peak Photon",          sub: "T = 2.725 K · recombination · ring antipode of n_BBH", math: "antipode(n_BBH) + Δn = 108.0\n106.249 + 1.751 = 108.000\nΔ = 0.002 oct ✓ CONFIRMED", status: "confirmed" },
+      { n: "115.9",  name: "Axion Dark Matter",        sub: "μeV mass scale · antipode of desert center",      math: "antipode(n_desert_ctr) ≈ 115.9\nchi k=56 · Δ = 0.065 oct", status: "derived" },
+      { n: "137.09", name: "LIGO Band / 1/α_QED",     sub: "100 Hz · fine structure constant in octaves",      math: "n_LIGO / n_Hub = 19/28\nΔ = 0.08% · 1/α_QED = 137.036", status: "confirmed" },
+      { n: "173.6",  name: "PTA / NANOGrav Band",      sub: "nHz GW background · QCD antipode (Δ=0.003 oct)",   math: "n_QCD_antipode = 169.7\nn_PTA ≈ 173.6\nNANOGrav 2023 detection band", status: "known" },
+      { n: "201.87", name: "Hubble Horizon",           sub: "n_Hubble · n_BBH = n_Hub/38 to 0.03%",            math: "n_BBH/n_Hub = 5.314/201.87\n= 1/38.00 (0.03% error)", status: "derived" },
+    ]
+  },
+];
+
+// ─────────────────────────────────────────────────
+//  SPINE TICKS — flatten all entries
+// ─────────────────────────────────────────────────
+const ALL_TICKS = [
+  { n: "0.000",  name: "Planck wall",          status: "known",    starred: false },
+  { n: "1.808",  name: "Anti-horizon",         status: "derived",  starred: false },
+  { n: "3.561",  name: "n_flip ★",             status: "seraphim", starred: true  },
+  { n: "4.165",  name: "NS 1.4M☉",            status: "known",    starred: false },
+  { n: "4.503",  name: "NS 2.0M☉",            status: "known",    starred: false },
+  { n: "4.98",   name: "Reduced Planck mass",  status: "known",    starred: false },
+  { n: "5.314",  name: "n_BBH ★",             status: "seraphim", starred: true  },
+  { n: "9.58",   name: "String scale",         status: "known",    starred: false },
+  { n: "11.9",   name: "GUT scale",            status: "known",    starred: false },
+  { n: "14.55",  name: "Desert center",        status: "derived",  starred: false },
+  { n: "19.6",   name: "Seesaw scale",         status: "known",    starred: false },
+  { n: "59.1",   name: "Higgs boson",          status: "known",    starred: false },
+  { n: "59.5",   name: "Z / W boson",          status: "known",    starred: false },
+  { n: "66.15",  name: "Proton / neutron",     status: "known",    starred: false },
+  { n: "68.80",  name: "QCD confinement",      status: "known",    starred: false },
+  { n: "76.99",  name: "Electron",             status: "known",    starred: false },
+  { n: "92.19",  name: "n_H condensation ★",  status: "seraphim", starred: true  },
+  { n: "~156",   name: "Planets (n_P dyn)",    status: "known",    starred: false },
+  { n: "108.0",  name: "CMB photon",           status: "confirmed",starred: false },
+  { n: "115.9",  name: "Axion window",         status: "derived",  starred: false },
+  { n: "137.09", name: "LIGO / 1/α_QED",      status: "confirmed",starred: false },
+  { n: "173.6",  name: "PTA/NANOGrav",         status: "known",    starred: false },
+  { n: "201.87", name: "Hubble horizon",       status: "derived",  starred: false },
+];
+
+const STATUS_COLOR = {
+  seraphim: "var(--rust)",
+  confirmed: "var(--sage)",
+  known: "var(--slate)",
+  derived: "var(--gold-dim)",
+};
+
+// ─────────────────────────────────────────────────
+//  BUILD SPINE
+// ─────────────────────────────────────────────────
+const spine = document.getElementById('spine');
+ALL_TICKS.forEach(t => {
+  const el = document.createElement('div');
+  el.className = 'tick' + (t.starred ? ' starred' : '');
+  el.innerHTML = `
+    <span class="tick-n">${t.n}</span>
+    <span class="tick-name">${t.name}</span>
+    <span class="tick-dot" style="background:${STATUS_COLOR[t.status]}"></span>
+  `;
+  spine.appendChild(el);
+});
+
+// ─────────────────────────────────────────────────
+//  BUILD STAGES
+// ─────────────────────────────────────────────────
+const stagesEl = document.getElementById('stages');
+
+const BADGE_HTML = {
+  seraphim:  '<span class="badge badge-seraphim">Seraphim</span>',
+  confirmed: '<span class="badge badge-confirmed">Confirmed</span>',
+  known:     '<span class="badge badge-known">Known</span>',
+  derived:   '<span class="badge badge-derived">Derived</span>',
+};
+
+STAGES.forEach(s => {
+  const div = document.createElement('div');
+  div.className = 'stage';
+  div.dataset.era = s.era;
+  div.id = 'stage-' + s.num;
+
+  const nlo = s.nrange[0], nhi = s.nrange[1];
+  const nStr = (typeof nlo === 'number' && nlo < 10) ?
+    `n = ${nlo.toFixed(3)} → ${nhi.toFixed(3)}` :
+    `n = ${nlo} → ${nhi}`;
+
+  let entriesHtml = '';
+  s.entries.forEach(e => {
+    const mathLines = e.math.split('\n').join('<br>');
+    entriesHtml += `
+      <div class="entry">
+        <div class="entry-n ${e.status}">${e.n}</div>
+        <div class="entry-info">
+          <div class="entry-name">${e.name} ${BADGE_HTML[e.status] || ''}</div>
+          <div class="entry-sub">${e.sub}</div>
+        </div>
+        <div class="entry-math">${mathLines}</div>
+      </div>`;
+  });
+
+  div.innerHTML = `
+    <div class="stage-header" onclick="toggleStage(${s.num})">
+      <div class="stage-number">${s.num.toString().padStart(2,'0')}</div>
+      <div class="stage-title-block">
+        <div>
+          <div class="stage-era">${s.etime}</div>
+          <div class="stage-title">${s.title}</div>
+        </div>
+        <div class="stage-n-range">n = <span>${nlo}</span> → <span>${nhi}</span></div>
+        <span class="chevron">▾</span>
+      </div>
+    </div>
+    <div class="stage-body">
+      <p class="stage-desc">${s.desc}</p>
+      <div class="entries">${entriesHtml}</div>
+    </div>
+  `;
+  stagesEl.appendChild(div);
+});
+
+// Open first 3 by default
+[1, 5, 8].forEach(n => {
+  const el = document.getElementById('stage-' + n);
+  if (el) el.classList.add('open');
+});
+
+function toggleStage(num) {
+  const el = document.getElementById('stage-' + num);
+  if (el) el.classList.toggle('open');
+}
+</script>
+</body>
+</html>
