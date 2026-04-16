@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Seraphim · Hubble Tension — VIZ-18</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#06080e;--surf:rgba(255,255,255,.025);--brd:rgba(255,255,255,.07);
+  --gold:#c8a84b;--cyan:#4ec8d5;--orange:#ff6b35;--green:#4ecf88;
+  --blue:#5b9bd5;--purple:#a06cd5;--red:#e05555;--pink:#e0558a;
+  --dim:rgba(255,255,255,.35);--dim2:rgba(255,255,255,.12);
+  --text:rgba(255,255,255,.88);
+}
+body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-height:100vh;overflow-x:hidden}
+.hdr{padding:14px 12px 0;text-align:center}
+.hdr h1{font-size:clamp(13px,3.8vw,19px);font-weight:300;letter-spacing:.28em;text-transform:uppercase;color:var(--gold)}
+.hdr p{font-family:'JetBrains Mono',monospace;font-size:clamp(7px,1.7vw,9px);color:rgba(255,255,255,.28);margin-top:3px;letter-spacing:.06em}
+.tabs{display:flex;gap:2px;padding:9px 10px 0;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:5px 11px;font-family:'JetBrains Mono',monospace;font-size:clamp(7px,1.9vw,9px);
+     letter-spacing:.08em;text-transform:uppercase;border:1px solid rgba(255,255,255,.08);
+     background:transparent;color:rgba(255,255,255,.3);cursor:pointer;transition:all .18s;white-space:nowrap}
+.tab.on{background:rgba(200,168,75,.13);border-color:var(--gold);color:var(--gold)}
+.cv-wrap{display:flex;justify-content:center;padding:8px 0 0}
+canvas{display:block}
+.panel{max-width:540px;margin:6px auto 0;padding:0 10px 24px;display:none}
+.panel.on{display:block}
+.card{background:var(--surf);border:1px solid var(--brd);padding:9px 13px;margin-bottom:3px}
+.ct{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;
+    color:rgba(255,255,255,.28);margin-bottom:6px}
+.row{display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;
+     border-bottom:1px solid rgba(255,255,255,.05);font-size:11px}
+.row:last-child{border-bottom:none}
+.rl{color:var(--dim);font-size:10px}
+.rv{font-family:'JetBrains Mono',monospace;font-size:9px}
+.rv.g{color:var(--gold)}.rv.c{color:var(--cyan)}.rv.o{color:var(--orange)}
+.rv.gr{color:var(--green)}.rv.b{color:var(--blue)}.rv.p{color:var(--purple)}
+.rv.r{color:var(--red)}.rv.pk{color:var(--pink)}
+.hb{padding:9px 13px;margin-bottom:3px}
+.hb.gold{background:rgba(200,168,75,.05);border:1px solid rgba(200,168,75,.2)}
+.hb.cyan{background:rgba(78,200,213,.04);border:1px solid rgba(78,200,213,.18)}
+.hb.green{background:rgba(78,207,136,.04);border:1px solid rgba(78,207,136,.18)}
+.hb.orange{background:rgba(255,107,53,.05);border:1px solid rgba(255,107,53,.2)}
+.hb.blue{background:rgba(91,155,213,.04);border:1px solid rgba(91,155,213,.18)}
+.hb .ct{margin-bottom:5px}
+.hb.gold .ct{color:rgba(200,168,75,.5)}.hb.cyan .ct{color:rgba(78,200,213,.45)}
+.hb.green .ct{color:rgba(78,207,136,.45)}.hb.orange .ct{color:rgba(255,107,53,.55)}
+.hb.blue .ct{color:rgba(91,155,213,.45)}
+.hb p{font-size:11.5px;line-height:1.65;color:rgba(255,255,255,.8)}
+.hb p em{font-style:normal}
+.hb.gold p em{color:var(--gold)}.hb.cyan p em{color:var(--cyan)}
+.hb.green p em{color:var(--green)}.hb.orange p em{color:var(--orange)}
+.hb.blue p em{color:var(--blue)}
+.chain{display:flex;flex-direction:column;gap:2px;margin:4px 0}
+.step{display:flex;gap:8px;padding:7px 10px;background:var(--surf);
+      border-left:2px solid rgba(255,255,255,.1);font-size:10.5px;align-items:flex-start}
+.sn{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--dim);min-width:18px;padding-top:1px}
+.st{line-height:1.5;color:rgba(255,255,255,.75)}
+.se{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold);display:block;margin-top:3px}
+.step.ga{border-left-color:var(--cyan)}.step.ge{border-left-color:var(--orange)}
+.step.th{border-left-color:var(--purple)}.step.k{border-left-color:var(--green)}
+.step.mi{border-left-color:var(--gold)}.step.pr{border-left-color:var(--pink)}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>Seraphim · Hubble Tension</h1>
+  <p>VIZ-18 · Two-Immirzi Friedmann Mismatch · Thermally-Weighted · Zero Free Parameters · March 31 2026</p>
+</div>
+
+<div class="tabs">
+  <button class="tab on"  onclick="show(0)">Overview</button>
+  <button class="tab"     onclick="show(1)">γ Channels</button>
+  <button class="tab"     onclick="show(2)">Thermal</button>
+  <button class="tab"     onclick="show(3)">k=11 Derivation</button>
+  <button class="tab"     onclick="show(4)">Master Identity</button>
+</div>
+
+<!-- canvases, only one shown at a time -->
+<div class="cv-wrap" id="cv0"><canvas id="c0"></canvas></div>
+<div class="cv-wrap" id="cv1" style="display:none"><canvas id="c1"></canvas></div>
+<div class="cv-wrap" id="cv2" style="display:none"><canvas id="c2"></canvas></div>
+<div class="cv-wrap" id="cv3" style="display:none"><canvas id="c3"></canvas></div>
+<div class="cv-wrap" id="cv4" style="display:none"><canvas id="c4"></canvas></div>
+
+<!-- ── PANEL 0 — OVERVIEW ── -->
+<div class="panel on" id="p0">
+  <div class="hb gold">
+    <div class="ct gold">The Claim</div>
+    <p>The Hubble tension H₀_local vs H₀_CMB is the observational signature of <em>γ_area ≠ γ_entropy</em> — the two physically distinct Immirzi values in the Seraphim LQG framework. Zero new parameters. Zero new physics beyond what 264 BBH events already confirmed.</p>
+  </div>
+  <div class="card">
+    <div class="ct">H₀ Numbers</div>
+    <div class="row"><span class="rl">H₀_CMB (Planck 2018)</span><span class="rv c">67.4 ± 0.5 km/s/Mpc</span></div>
+    <div class="row"><span class="rl">H₀_local (SH0ES+JWST 2025)</span><span class="rv o">73.8 ± 0.88 km/s/Mpc</span></div>
+    <div class="row"><span class="rl">H₀_predicted (this work)</span><span class="rv gr">73.96 km/s/Mpc</span></div>
+    <div class="row"><span class="rl">Residual</span><span class="rv gr">0.16 km/s/Mpc = 0.18σ</span></div>
+    <div class="row"><span class="rl">Tension significance</span><span class="rv r">5–6σ  (confirmed, not systematics)</span></div>
+    <div class="row"><span class="rl">Free parameters used</span><span class="rv gr">ZERO</span></div>
+  </div>
+  <div class="card">
+    <div class="ct">Master Identity</div>
+    <div class="row"><span class="rl">N_Hub × α</span><span class="rv g">= k_seesaw × Δn_imm × 2^(−Δn_Ser)</span></div>
+    <div class="row"><span class="rl">LHS = p (helix pitch)</span><span class="rv g">1.4731 oct</span></div>
+    <div class="row"><span class="rl">RHS = 11 × 0.4494 × 0.2967</span><span class="rv g">1.4673 oct</span></div>
+    <div class="row"><span class="rl">Residual</span><span class="rv gr">0.44%  (CMB temp gap tier)</span></div>
+  </div>
+  <div class="hb green">
+    <div class="ct green">Why It's Irreducible in ΛCDM</div>
+    <p>DESI DR2 tested five dark energy frameworks. Tension persists in all five. It's not w(z). It's not dark energy. It's that <em>ΛCDM has one Immirzi value or none</em> — it cannot represent γ_area ≠ γ_entropy.</p>
+  </div>
+</div>
+
+<!-- ── PANEL 1 — γ CHANNELS ── -->
+<div class="panel" id="p1">
+  <div class="hb cyan">
+    <div class="ct cyan">Two Immirzi Values — Same j=1/2 Face</div>
+    <p><em>γ_area = 0.2375</em> (Meissner 2004): area-counting. Enters K₀ and G — the geometry of spacetime.<br>
+    <em>γ_entropy = 0.12738</em> = ln(2)/(π√3): entropy-counting. Enters n_flip via the 1-bit-per-face rule — the thermodynamics of spacetime.<br>
+    Not inconsistencies. Two different physical questions to the same spin-½ face.</p>
+  </div>
+  <div class="card">
+    <div class="ct">Friedmann γ Accounting: H² = (8πG/3)ρ</div>
+    <div class="row"><span class="rl">LHS: H²</span><span class="rv c">∝ G ∝ 1/(γ_AREA · ℓ_P²)</span></div>
+    <div class="row"><span class="rl">RHS: ρ_GW / ρ_photon</span><span class="rv c">∝ γ_AREA  (through K₀)</span></div>
+    <div class="row"><span class="rl">RHS: ρ_baryon → r_s</span><span class="rv o">∝ γ_ENTROPY  (entropy/baryon)</span></div>
+    <div class="row"><span class="rl">γ_area cancel (local H₀)</span><span class="rv gr">γ_area/γ_area → cancels → H₀_true ✓</span></div>
+    <div class="row"><span class="rl">γ_area cancel (CMB D_A)</span><span class="rv gr">γ_area/γ_area → cancels → H₀_true ✓</span></div>
+    <div class="row"><span class="rl">γ mismatch (CMB r_s)</span><span class="rv r">γ_ENTROPY vs γ_AREA → does NOT cancel</span></div>
+  </div>
+  <div class="hb orange">
+    <div class="ct orange">The LHS Partner of γ_entropy IS γ_area</div>
+    <p>γ_entropy's partner is already there — it's <em>γ_area on the LHS</em>. But <em>γ_area ≠ γ_entropy</em>. Their inequality is the Hubble tension. The two Immirzi values are literally the two sides of the Friedmann equation for the sound horizon.</p>
+  </div>
+  <div class="card">
+    <div class="ct">Channel Mismatch in Octave Space</div>
+    <div class="row"><span class="rl">γ_area / γ_entropy</span><span class="rv g">1.8645</span></div>
+    <div class="row"><span class="rl">Δn_imm = ½·log₂(γ_a/γ_e)</span><span class="rv g">0.4494 oct  (full unattenuated shift)</span></div>
+    <div class="row"><span class="rl">Measured Δn_tension</span><span class="rv o">0.1309 oct</span></div>
+    <div class="row"><span class="rl">Suppression needed</span><span class="rv p">0.2916 ← this is 2^(−Δn_Ser)</span></div>
+  </div>
+</div>
+
+<!-- ── PANEL 2 — THERMAL ── -->
+<div class="panel" id="p2">
+  <div class="hb gold">
+    <div class="ct gold">Newton's Third: The Equal and Opposite Reaction</div>
+    <p>γ_entropy acts on r_s (sound horizon) — the action. The cold reservoir (known realm, C>0, BBH geometry) pushes back with thermal weight T_cold/T_hot — the equal and opposite reaction. <em>Entropy is the heat sink.</em></p>
+  </div>
+  <div class="card">
+    <div class="ct">Two Thermal Reservoirs</div>
+    <div class="row"><span class="rl">Hot reservoir: n_flip = 3.561</span><span class="rv o">C=0, equilibrium, T~10³¹ K</span></div>
+    <div class="row"><span class="rl">Cold reservoir: n_BBH = 5.314</span><span class="rv c">C=+0.5, Robertson max, known realm</span></div>
+    <div class="row"><span class="rl">Seraphim interval Δn_Ser</span><span class="rv g">1.753 oct  (thermal gradient)</span></div>
+    <div class="row"><span class="rl">T_cold / T_hot</span><span class="rv p">2^(−1.753) = 0.2967</span></div>
+    <div class="row"><span class="rl">Carnot efficiency η</span><span class="rv gr">1 − 0.2967 = 70.3%  (cold absorbs 70%)</span></div>
+    <div class="row"><span class="rl">Signal that survives</span><span class="rv o">29.7%  (the observable Hubble tension)</span></div>
+  </div>
+  <div class="card">
+    <div class="ct">The Attenuation</div>
+    <div class="row"><span class="rl">Δn_imm (full signal)</span><span class="rv g">0.4494 oct</span></div>
+    <div class="row"><span class="rl">× T_cold/T_hot = 2^(−Δn_Ser)</span><span class="rv p">× 0.2967</span></div>
+    <div class="row"><span class="rl">= Δn_tension (thermally weighted)</span><span class="rv gr">0.1333 oct</span></div>
+    <div class="row"><span class="rl">Measured Δn_H₀</span><span class="rv o">0.1309 oct</span></div>
+    <div class="row"><span class="rl">Residual</span><span class="rv gr">1.8%  (within CMB temp gap tier)</span></div>
+  </div>
+  <div class="hb green">
+    <div class="ct green">Physical Picture</div>
+    <p>The sound horizon <em>starts</em> near n_flip (hot, equilibrium, C=0) and <em>ends</em> at recombination (deep in cold realm, C>0, BBH-scale geometry). γ_entropy generates the signal at the hot boundary. The cold reservoir (Robertson maximum geometry) absorbs 70.3% of it via Carnot. The surviving 29.7% is what CMB observatories measure as the Hubble tension.</p>
+  </div>
+</div>
+
+<!-- ── PANEL 3 — k=11 ── -->
+<div class="panel" id="p3">
+  <div class="hb cyan">
+    <div class="ct cyan">k_seesaw = 11 — Derived Two Independent Ways</div>
+    <p>The seesaw scale sets the baryon asymmetry of the universe — why ρ_b ≠ 0, why r_s exists, why γ_entropy contaminates the CMB. Its mode number k=11 controls the amplitude of the tension via p/k_seesaw = Δn_tension.</p>
+  </div>
+
+  <div class="chain">
+    <div class="step k">
+      <div class="sn">A</div>
+      <div class="st">Desert wall arithmetic — exact, zero residual
+        <span class="se">k_string_chi=3, k_seesaw_chi=8  (chi-ladder, Paper 2 §7.8)</span>
+        <span class="se">(3+8)/2 × χ(S²) = 5.5 × 2 = 11  EXACTLY</span>
+      </div>
+    </div>
+    <div class="step k">
+      <div class="sn">B</div>
+      <div class="st">Robertson cascade extended — Paper 2 §7.5
+        <span class="se">k = 2(C_eff+1) = 2((19.558−3.561)/3.506 + 1) = 11.125 → 11</span>
+        <span class="se">Residual 0.125 = (φ₂−φ₁)/Δn  (known phase offset)</span>
+      </div>
+    </div>
+    <div class="step pr">
+      <div class="sn">✓</div>
+      <div class="st">Prime constraint — threshold modes must be irreducible
+        <span class="se">k=9=3²: two BBH modes, composite → not threshold</span>
+        <span class="se">k=10=2×5: composite → not threshold</span>
+        <span class="se">k=11: PRIME, irreducible → threshold mode confirmed</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Prime-Indexing Pattern (emergent)</div>
+    <div class="row"><span class="rl">Grid 1: j=1/2 → dim=2 → p(2)=3</span><span class="rv g">k_BBH=3 ✓ (264 events)</span></div>
+    <div class="row"><span class="rl">Grid 2: j=2 → dim=5 → p(5)=11</span><span class="rv g">k_seesaw=11 ✓ (0.008 oct)</span></div>
+    <div class="row"><span class="rl">Rule: k = p(dim(j)) = p(2j+1)</span><span class="rv p">verified in 2 cases, formal LQG derivation open</span></div>
+    <div class="row"><span class="rl">Next case: j=3 → dim=7 → p(7)=17</span><span class="rv b">prediction — not yet tested</span></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Desert Center Identity (consequence)</div>
+    <div class="row"><span class="rl">n_center − n_flip</span><span class="rv g">= k_seesaw = 11.000 (exact)</span></div>
+    <div class="row"><span class="rl">C_eff(desert center) = 11/slope</span><span class="rv g">= 11/3.506 = 3.1375 ≈ π  (0.13%)</span></div>
+    <div class="row"><span class="rl">Desert width = dim(j=2) × χ</span><span class="rv c">5 × 2 = 10 oct (confirmed)</span></div>
+  </div>
+</div>
+
+<!-- ── PANEL 4 — MASTER IDENTITY ── -->
+<div class="panel" id="p4">
+  <div class="hb gold">
+    <div class="ct gold">The Master Identity — All Five Components</div>
+    <p><em>N_Hub × α  =  k_seesaw × [½·log₂(γ_area/γ_entropy)] × 2^(n_flip − n_BBH)</em></p>
+    <p style="margin-top:6px;font-size:10.5px;color:rgba(255,255,255,.5)">Helix pitch = seesaw mode × Immirzi channel gap × thermal attenuation</p>
+  </div>
+
+  <div class="chain">
+    <div class="step ga">
+      <div class="sn">1</div>
+      <div class="st">N_Hub = 201.87 octaves (Planck→Hubble span, measured)
+        <span class="se">α = 1/137.036 (CODATA fine structure constant)</span>
+        <span class="se">p = N_Hub × α = 1.4731 oct  (helix pitch, Paper 4)</span>
+      </div>
+    </div>
+    <div class="step k">
+      <div class="sn">2</div>
+      <div class="st">k_seesaw = 11  (derived, §5 — two independent paths, prime ✓)
+        <span class="se">p / k_seesaw = 1.4731/11 = 0.13392 oct</span>
+      </div>
+    </div>
+    <div class="step ge">
+      <div class="sn">3</div>
+      <div class="st">Δn_imm = ½·log₂(γ_area/γ_entropy)  (Immirzi channel gap)
+        <span class="se">= ½·log₂(0.2375/0.12738) = 0.4494 oct</span>
+      </div>
+    </div>
+    <div class="step th">
+      <div class="sn">4</div>
+      <div class="st">2^(n_flip − n_BBH)  (thermal attenuation, Newton's third)
+        <span class="se">= 2^(3.561 − 5.314) = 2^(−1.753) = 0.2967</span>
+      </div>
+    </div>
+    <div class="step mi">
+      <div class="sn">5</div>
+      <div class="st">RHS = 11 × 0.4494 × 0.2967 = 1.4673
+        <span class="se">LHS = p = 1.4731     residual = 0.44%</span>
+      </div>
+    </div>
+    <div class="step pr">
+      <div class="sn">→</div>
+      <div class="st">Δn_tension = p/11 = 0.13392 oct  →  H₀_local = 67.4 × 2^0.13392
+        <span class="se">= 73.96 km/s/Mpc  vs measured 73.8 ± 0.88  →  0.18σ</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Falsification Targets</div>
+    <div class="row"><span class="rl">T1 — H₀_local prediction</span><span class="rv gr">73.96 km/s/Mpc  →  Euclid 2026</span></div>
+    <div class="row"><span class="rl">T2 — Tension in ΛCDM extensions</span><span class="rv gr">Persists in all 5  →  CONFIRMED DESI DR2</span></div>
+    <div class="row"><span class="rl">T3 — No w(z) resolution</span><span class="rv gr">Confirmed DESI DR2 2025</span></div>
+    <div class="row"><span class="rl">T4 — CMB spectral distortion</span><span class="rv b">PIXIE / SuperPIXIE</span></div>
+    <div class="row"><span class="rl">T5 — j=3 case: k=p(7)=17</span><span class="rv p">future framework test</span></div>
+    <div class="row"><span class="rl">T6 — EMRI → n_flip (C=0 floor)</span><span class="rv b">LISA ~2035</span></div>
+  </div>
+</div>
+
+<script>
+var W0=520,H0=300;
+var DPR=Math.min(window.devicePixelRatio||1,2);
+
+// ── constants ────────────────────────────────────────────────────────────────
+var N=201.87,CAV=N/2,FLIP=3.561,nBBH=5.314,Dn=1.753,SLOPE=3.506;
+var ALPHA=1/137.036,p_helix=N*ALPHA;
+var GA=0.2375,GE=0.12738;
+var Dn_imm=0.5*Math.log2(GA/GE);
+var T_ratio=Math.pow(2,-Dn);
+var k_s=11;
+
+var GOLD='#c8a84b',CYAN='#4ec8d5',ORANGE='#ff6b35',GREEN='#4ecf88',
+    BLUE='#5b9bd5',PURPLE='#a06cd5',RED='#e05555',PINK='#e0558a',
+    DIM='rgba(255,255,255,0.15)',DIM2='rgba(255,255,255,0.06)';
+
+function scale(id){
+  var cv=document.getElementById(id);
+  cv.width=W0*DPR; cv.height=H0*DPR;
+  cv.style.width=W0+'px'; cv.style.height=H0+'px';
+  var ctx=cv.getContext('2d'); ctx.scale(DPR,DPR);
+  return {ctx,W:W0,H:H0};
+}
+
+function mono(ctx,text,x,y,col,sz,align){
+  ctx.font=(sz||9)+'px JetBrains Mono,monospace';
+  ctx.fillStyle=col||'rgba(255,255,255,0.5)';
+  ctx.textAlign=align||'left';
+  ctx.fillText(text,x,y);
+}
+function serif(ctx,text,x,y,col,sz,align){
+  ctx.font=(sz||11)+'px Crimson Pro,serif';
+  ctx.fillStyle=col||'rgba(255,255,255,0.7)';
+  ctx.textAlign=align||'left';
+  ctx.fillText(text,x,y);
+}
+
+// ── TAB 0 — H₀ comparison bar chart ─────────────────────────────────────────
+function drawOverview(){
+  var {ctx,W,H}=scale('c0');
+  ctx.clearRect(0,0,W,H);
+
+  var title='H₀ Measurements vs Seraphim Prediction';
+  ctx.font='10px JetBrains Mono,monospace';
+  ctx.fillStyle=GOLD; ctx.textAlign='center';
+  ctx.fillText(title,W/2,16);
+
+  // bar chart of H0 values
+  var vals=[
+    {label:'Planck CMB',         v:67.4, err:0.5,  col:CYAN,   tag:'early universe'},
+    {label:'DESI DR2 BAO',       v:68.52,err:0.62, col:BLUE,   tag:'BAO'},
+    {label:'Seraphim predicted', v:73.96,err:0,    col:GREEN,  tag:'this work'},
+    {label:'TRGB (CCHP 2025)',   v:70.5, err:1.2,  col:PURPLE, tag:'middle ground'},
+    {label:'SH0ES+JWST 2025',    v:73.8, err:0.88, col:ORANGE, tag:'distance ladder'},
+  ];
+
+  var vmin=64,vmax=77;
+  var L=24,R=W-24,T=32,B=H-52;
+  var barH=18,gap=8;
+  var totalH=vals.length*(barH+gap);
+  var startY=T+(B-T-totalH)/2;
+
+  function px(v){return L+(v-vmin)/(vmax-vmin)*(R-L);}
+
+  // vertical grid
+  ctx.strokeStyle=DIM2; ctx.lineWidth=0.5;
+  for(var v=64;v<=78;v+=2){
+    ctx.beginPath(); ctx.moveTo(px(v),T-8); ctx.lineTo(px(v),B); ctx.stroke();
+    mono(ctx,v,px(v),B+12,'rgba(255,255,255,0.3)',8,'center');
+  }
+  ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.font='8px JetBrains Mono,monospace';
+  ctx.textAlign='center'; ctx.fillText('km/s/Mpc',W/2,B+24);
+
+  vals.forEach(function(d,i){
+    var y=startY+i*(barH+gap);
+    var x=px(d.v);
+
+    // bar fill
+    ctx.fillStyle=d.col+'22';
+    ctx.fillRect(L,y,x-L,barH);
+    
+    // bar end marker
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x,y+barH);
+    ctx.strokeStyle=d.col; ctx.lineWidth=2.5; ctx.stroke();
+
+    // error bar
+    if(d.err>0){
+      var xe1=px(d.v-d.err),xe2=px(d.v+d.err);
+      ctx.beginPath(); ctx.moveTo(xe1,y+barH/2); ctx.lineTo(xe2,y+barH/2);
+      ctx.strokeStyle=d.col+'99'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(xe1,y+barH/2-4); ctx.lineTo(xe1,y+barH/2+4);
+      ctx.moveTo(xe2,y+barH/2-4); ctx.lineTo(xe2,y+barH/2+4);
+      ctx.stroke();
+    }
+    // star for prediction
+    if(d.err===0){
+      ctx.beginPath(); ctx.arc(x,y+barH/2,4,0,Math.PI*2);
+      ctx.fillStyle=GREEN; ctx.fill();
+    }
+
+    // label
+    ctx.fillStyle=d.col; ctx.font='8px JetBrains Mono,monospace';
+    ctx.textAlign='left';
+    ctx.fillText(d.label,L+2,y+barH/2+3);
+
+    // value
+    ctx.textAlign='right';
+    ctx.fillText(d.v.toFixed(2),R-2,y+barH/2+3);
+  });
+
+  // tension bracket
+  var y1=startY+0*(barH+gap)+barH/2;
+  var y2=startY+4*(barH+gap)+barH/2;
+  var bx=R+8;
+  ctx.strokeStyle='rgba(255,107,53,0.6)'; ctx.lineWidth=1;
+  ctx.setLineDash([2,2]);
+  ctx.beginPath();
+  ctx.moveTo(px(67.4),y1-2); ctx.lineTo(bx,y1-2);
+  ctx.lineTo(bx,y2+2); ctx.lineTo(px(73.8),y2+2);
+  ctx.stroke(); ctx.setLineDash([]);
+  mono(ctx,'6σ',bx+4,(y1+y2)/2+3,ORANGE,8,'left');
+
+  // prediction arrow
+  var predX=px(73.96);
+  ctx.strokeStyle=GREEN+'99'; ctx.lineWidth=1; ctx.setLineDash([3,2]);
+  ctx.beginPath(); ctx.moveTo(predX,T-6); ctx.lineTo(predX,startY+2*(barH+gap)+barH/2);
+  ctx.stroke(); ctx.setLineDash([]);
+  mono(ctx,'← 0.18σ',predX+3,T+8,GREEN,7,'left');
+}
+
+// ── TAB 1 — γ channel diagram ────────────────────────────────────────────────
+function drawGamma(){
+  var {ctx,W,H}=scale('c1');
+  ctx.clearRect(0,0,W,H);
+
+  mono(ctx,'Friedmann γ Channel Accounting',W/2,14,GOLD,10,'center');
+
+  // Three column boxes: LHS | RHS(γ_area) | RHS(γ_entropy)
+  var boxes=[
+    {x:20,  w:140, y:30, h:160, col:CYAN,   title:'LHS', sub:'H²  =  (8πG/3)ρ', items:['H²','G ∝ 1/(γ_AREA·ℓ_P²)','metric geometry','Robertson min']},
+    {x:170, w:160, y:30, h:160, col:CYAN,   title:'RHS — γ_AREA sector', sub:'cancels with LHS', items:['ρ_GW ∝ γ_area','ρ_photon (K₀)','D_A propagation','EM ladder rungs']},
+    {x:340, w:160, y:30, h:160, col:ORANGE, title:'RHS — γ_ENTROPY sector', sub:'does NOT cancel', items:['r_s (sound horizon)','entropy/baryon','baryon loading R','n_flip origin']},
+  ];
+
+  boxes.forEach(function(b){
+    // box background
+    ctx.fillStyle=b.col+'11';
+    ctx.strokeStyle=b.col+'55'; ctx.lineWidth=1;
+    ctx.fillRect(b.x,b.y,b.w,b.h);
+    ctx.strokeRect(b.x,b.y,b.w,b.h);
+    // title
+    mono(ctx,b.title,b.x+b.w/2,b.y+12,b.col,8,'center');
+    mono(ctx,b.sub,b.x+b.w/2,b.y+22,'rgba(255,255,255,0.35)',7,'center');
+    // items
+    b.items.forEach(function(it,i){
+      var iy=b.y+36+i*24;
+      ctx.fillStyle=b.col+'33';
+      ctx.fillRect(b.x+8,iy-12,b.w-16,18);
+      mono(ctx,it,b.x+b.w/2,iy,b.col+'ee',8,'center');
+    });
+  });
+
+  // CANCEL arrow between LHS and RHS-area
+  var cy=H*0.38;
+  ctx.strokeStyle=CYAN+'99'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(160,cy); ctx.lineTo(168,cy); ctx.stroke();
+  ctx.fillStyle=CYAN+'99'; ctx.font='8px JetBrains Mono,monospace';
+  ctx.textAlign='center'; ctx.fillText('CANCEL',165,cy-5);
+  ctx.fillText('→ H₀_true',165,cy+13);
+
+  // MISMATCH arrow between LHS and RHS-entropy
+  ctx.strokeStyle=ORANGE+'99'; ctx.lineWidth=1.5; ctx.setLineDash([3,2]);
+  ctx.beginPath();
+  ctx.moveTo(20+140/2,30+160+4); // bottom of LHS box
+  ctx.lineTo(340+160/2,30+160+4); // bottom of entropy box
+  ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle=ORANGE; ctx.textAlign='center';
+  ctx.font='8px JetBrains Mono,monospace';
+  ctx.fillText('γ_AREA ≠ γ_ENTROPY  →  Hubble tension',W/2,30+160+20);
+
+  // γ values
+  var infoY=H-50;
+  var infos=[
+    {x:50, col:CYAN,   t:'γ_area = 0.2375'},
+    {x:200,col:CYAN,   t:'(Meissner 2004)'},
+    {x:350,col:ORANGE, t:'γ_entropy = 0.12738'},
+    {x:460,col:ORANGE, t:'ln(2)/(π√3)'},
+  ];
+  infos.forEach(function(f){
+    mono(ctx,f.t,f.x,infoY,f.col,8,'left');
+  });
+
+  var ratioY=H-30;
+  mono(ctx,'Ratio γ_a/γ_e = 1.8645',W/2,ratioY,'rgba(255,255,255,0.5)',8,'center');
+  mono(ctx,'Δn_imm = ½·log₂(1.8645) = 0.4494 oct',W/2,ratioY+13,GOLD,8,'center');
+}
+
+// ── TAB 2 — Thermal reservoirs + Carnot ─────────────────────────────────────
+function drawThermal(){
+  var {ctx,W,H}=scale('c2');
+  ctx.clearRect(0,0,W,H);
+
+  mono(ctx,'Thermal Attenuation — Newton\'s Third Law',W/2,14,GOLD,10,'center');
+
+  // Draw the Robertson cascade as vertical levels
+  var midX=W/2, L=60, R=W-60;
+  var levels=[
+    {n:0.055,  C:-1.0, col:CYAN,   label:'k=0  vacuum mode', T:'10³² K'},
+    {n:1.808,  C:-0.5, col:BLUE,   label:'k=1  anti-horizon'},
+    {n:3.561,  C: 0.0, col:ORANGE, label:'n_flip  HOT RESERVOIR', T:'10³¹ K', hot:true},
+    {n:5.314,  C:+0.5, col:CYAN,   label:'n_BBH  COLD RESERVOIR', T:'10²⁹ K', cold:true},
+  ];
+
+  var nMin=0,nMax=6;
+  function py(n){return 28+(n-nMin)/(nMax-nMin)*(H-60);}
+
+  // thermometer bar
+  var bx=midX-20,bw=40;
+  // gradient fill
+  var grad=ctx.createLinearGradient(bx,py(nMax),bx,py(nMin));
+  grad.addColorStop(0,CYAN+'44');
+  grad.addColorStop(0.5,ORANGE+'66');
+  grad.addColorStop(1,CYAN+'22');
+  ctx.fillStyle=grad;
+  ctx.fillRect(bx,py(nMax),bw,py(nMin)-py(nMax));
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+  ctx.strokeRect(bx,py(nMax),bw,py(nMin)-py(nMax));
+
+  // levels
+  levels.forEach(function(lv){
+    var y=py(lv.n);
+    ctx.strokeStyle=lv.col; ctx.lineWidth=lv.hot||lv.cold?2:1;
+    ctx.beginPath(); ctx.moveTo(bx-4,y); ctx.lineTo(bx+bw+4,y); ctx.stroke();
+    // dot
+    ctx.beginPath(); ctx.arc(bx+bw/2,y,4,0,Math.PI*2);
+    ctx.fillStyle=lv.col; ctx.fill();
+    // label right
+    mono(ctx,lv.label,bx+bw+12,y+3,lv.col+(lv.hot||lv.cold?'':'99'),lv.hot||lv.cold?9:8,'left');
+    if(lv.T) mono(ctx,lv.T,bx+bw+12,y+13,'rgba(255,255,255,0.35)',7,'left');
+    // n value left
+    mono(ctx,'n='+lv.n,bx-10,y+3,'rgba(255,255,255,0.45)',8,'right');
+  });
+
+  // Carnot arrow
+  var y_hot=py(3.561), y_cold=py(5.314);
+  var ax=bx-24;
+  ctx.strokeStyle=PURPLE+'aa'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(ax,y_hot); ctx.lineTo(ax,y_cold); ctx.stroke();
+  // arrowhead
+  ctx.beginPath();
+  ctx.moveTo(ax,y_cold);
+  ctx.lineTo(ax-5,y_cold-8); ctx.lineTo(ax+5,y_cold-8); ctx.closePath();
+  ctx.fillStyle=PURPLE+'aa'; ctx.fill();
+  
+  var my=(y_hot+y_cold)/2;
+  mono(ctx,'γ_entropy',ax-2,my-6,ORANGE+'cc',7,'right');
+  mono(ctx,'signal',ax-2,my+4,ORANGE+'cc',7,'right');
+
+  // Attenuation annotations
+  var ex=R-40;
+  mono(ctx,'Full signal:',ex,y_hot-8,'rgba(255,255,255,0.5)',7,'center');
+  mono(ctx,'Δn=0.4494 oct',ex,y_hot+4,ORANGE,8,'center');
+  ctx.strokeStyle=ORANGE+'55'; ctx.lineWidth=1; ctx.setLineDash([2,2]);
+  ctx.beginPath(); ctx.moveTo(ex,y_hot+8); ctx.lineTo(ex,y_cold-8); ctx.stroke();
+  ctx.setLineDash([]);
+  mono(ctx,'× 0.2967',ex,my,PURPLE,8,'center');
+  mono(ctx,'(T_c/T_h)',ex,my+12,'rgba(255,255,255,0.3)',7,'center');
+  mono(ctx,'Survives:',ex,y_cold-8,'rgba(255,255,255,0.5)',7,'center');
+  mono(ctx,'0.1333 oct',ex,y_cold+4,GREEN,8,'center');
+
+  // bottom note
+  mono(ctx,'Carnot η = 70.3% absorbed by cold  →  29.7% = Hubble tension',W/2,H-10,'rgba(255,255,255,0.4)',8,'center');
+}
+
+// ── TAB 3 — k=11 desert + path diagram ──────────────────────────────────────
+function drawK11(){
+  var {ctx,W,H}=scale('c3');
+  ctx.clearRect(0,0,W,H);
+
+  mono(ctx,'k_seesaw = 11 — Two Independent Derivation Paths',W/2,14,GOLD,10,'center');
+
+  // Chi ladder view: n axis from 0 to 25
+  var L=50,R=W-40,T=30,B=H-50;
+  var nMin=0,nMax=24;
+  function px(n){return L+(n-nMin)/(nMax-nMin)*(R-L);}
+  function py2(row){return T+row*(B-T)/4;}
+
+  // axis
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(L,B); ctx.lineTo(R,B); ctx.stroke();
+  [0,5,10,15,20].forEach(function(n){
+    mono(ctx,n,px(n),B+12,'rgba(255,255,255,0.3)',8,'center');
+    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=0.5;
+    ctx.beginPath(); ctx.moveTo(px(n),T); ctx.lineTo(px(n),B); ctx.stroke();
+  });
+  mono(ctx,'n (octaves from Planck)',L+(R-L)/2,B+24,'rgba(255,255,255,0.25)',8,'center');
+
+  // χ-ladder rungs
+  var chiRungs=[{k:0,n:3.561,col:GREEN,l:'n_flip k=0'},{k:3,n:9.561,col:GOLD,l:'k=3 string'},{k:5,n:13.561,col:DIM},{k:6,n:15.561,col:DIM},{k:7,n:17.561,col:DIM},{k:8,n:19.561,col:ORANGE,l:'k=8 seesaw'},{k:9,n:21.561,col:DIM}];
+  chiRungs.forEach(function(r){
+    var x=px(r.n);
+    ctx.strokeStyle=r.col||DIM; ctx.lineWidth=(r.col!==DIM)?1.5:0.5;
+    ctx.beginPath(); ctx.moveTo(x,B-2); ctx.lineTo(x,T+60); ctx.stroke();
+    if(r.l) mono(ctx,r.l,x,T+48,r.col,7,'center');
+  });
+
+  // Desert shading
+  ctx.fillStyle='rgba(200,168,75,0.06)';
+  ctx.fillRect(px(9.561),T+55,px(19.561)-px(9.561),B-T-60);
+  mono(ctx,'GUT DESERT  (9.97 oct = 5×χ)',px((9.561+19.561)/2),T+68,GOLD+'99',7,'center');
+
+  // Desert center
+  var cx=px(14.561);
+  ctx.strokeStyle=GOLD+'88'; ctx.lineWidth=1; ctx.setLineDash([3,2]);
+  ctx.beginPath(); ctx.moveTo(cx,B); ctx.lineTo(cx,T+55); ctx.stroke();
+  ctx.setLineDash([]);
+  mono(ctx,'center',cx,T+38,GOLD,7,'center');
+  mono(ctx,'n=14.561',cx,T+49,GOLD+'99',7,'center');
+
+  // PATH A: half-sum bracket
+  var pathAy=B-20;
+  ctx.strokeStyle=GREEN+'99'; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.moveTo(px(9.561),pathAy); ctx.lineTo(px(9.561),pathAy+8);
+  ctx.moveTo(px(9.561),pathAy+4); ctx.lineTo(px(14.561),pathAy+4);
+  ctx.moveTo(px(14.561),pathAy+4); ctx.lineTo(px(19.561),pathAy+4);
+  ctx.moveTo(px(19.561),pathAy); ctx.lineTo(px(19.561),pathAy+8);
+  ctx.stroke();
+  mono(ctx,'(3+8)/2×2 = 11  PATH A',px((9.561+19.561)/2),pathAy+18,GREEN,7,'center');
+
+  // k_seesaw = 11 marker
+  var kx=px(3.561+11);
+  ctx.beginPath(); ctx.arc(kx,B-5,6,0,Math.PI*2);
+  ctx.fillStyle=GREEN; ctx.fill();
+  ctx.strokeStyle='#06080e'; ctx.lineWidth=1.5; ctx.stroke();
+  mono(ctx,'k=11',kx,B-14,GREEN,8,'center');
+
+  // Grid 2 line
+  ctx.strokeStyle=CYAN+'66'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(px(3.561+11*1.753+0.275),T+75); ctx.lineTo(px(3.561+11*1.753+0.275),B);
+  ctx.stroke(); ctx.setLineDash([]);
+  mono(ctx,'Grid2 k=11',px(3.561+11*1.753+0.275),T+90,CYAN+'99',7,'center');
+  mono(ctx,'n=19.558',px(3.561+11*1.753+0.275),T+101,CYAN+'66',7,'center');
+  mono(ctx,'PATH B',px(3.561+11*1.753+0.275),T+112,CYAN,7,'center');
+}
+
+// ── TAB 4 — Master identity visual ──────────────────────────────────────────
+function drawMaster(){
+  var {ctx,W,H}=scale('c4');
+  ctx.clearRect(0,0,W,H);
+
+  mono(ctx,'Master Identity — All Five Components Multiply to p',W/2,14,GOLD,10,'center');
+
+  // Five blocks that multiply together
+  var blocks=[
+    {label:'k_seesaw',val:'11',sub:'seesaw mode',col:GREEN,   desc:'derived §5'},
+    {label:'×  Δn_imm','val':'0.4494','sub':'½·log₂(γa/γe)',col:ORANGE, desc:'Immirzi gap'},
+    {label:'×  T_ratio','val':'0.2967','sub':'2^(−Δn_Ser)',col:PURPLE,  desc:'thermal weight'},
+    {label:'=  RHS',    val:'1.4673',  sub:'product',         col:GOLD,   desc:'0.44% residual'},
+    {label:'p = N_Hub·α',val:'1.4731', sub:'helix pitch',      col:CYAN,   desc:'zero free params'},
+  ];
+
+  var bw=88,bh=70,gap=8;
+  var totalW=blocks.length*bw+(blocks.length-1)*gap;
+  var startX=(W-totalW)/2;
+  var by=(H-bh)/2-10;
+
+  blocks.forEach(function(b,i){
+    var bx=startX+i*(bw+gap);
+    ctx.fillStyle=b.col+'15';
+    ctx.strokeStyle=b.col+(i===4?'':'55');
+    ctx.lineWidth=i===4?2:1;
+    ctx.fillRect(bx,by,bw,bh);
+    ctx.strokeRect(bx,by,bw,bh);
+
+    mono(ctx,b.label,bx+bw/2,by+14,b.col+'aa',7,'center');
+    ctx.fillStyle=b.col;
+    ctx.font='bold 15px JetBrains Mono,monospace';
+    ctx.textAlign='center';
+    ctx.fillText(b.val,bx+bw/2,by+36);
+    mono(ctx,b.sub,bx+bw/2,by+50,'rgba(255,255,255,0.4)',7,'center');
+    mono(ctx,b.desc,bx+bw/2,by+62,'rgba(255,255,255,0.3)',6,'center');
+  });
+
+  // equals line between RHS and p
+  var eq_x=startX+4*(bw+gap)-gap/2;
+  ctx.strokeStyle=GOLD+'99'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(eq_x-2,by+bh/2); ctx.lineTo(eq_x+2,by+bh/2); ctx.stroke();
+
+  // residual note
+  mono(ctx,'0.44% residual  (same tier as CMB temperature gap 0.5%)',W/2,by+bh+16,'rgba(255,255,255,0.35)',8,'center');
+
+  // H0 prediction
+  var predY=by+bh+36;
+  mono(ctx,'H₀_local = H₀_CMB × 2^(p/11) = 67.4 × 2^0.1339 = 73.96 km/s/Mpc',W/2,predY,GREEN,9,'center');
+
+  // bar: CMB vs pred vs local
+  var barY=predY+20, L=60, R=W-60;
+  var vmin=65,vmax=76;
+  function bx2(v){return L+(v-vmin)/(vmax-vmin)*(R-L);}
+
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=0.5;
+  ctx.beginPath(); ctx.moveTo(L,barY); ctx.lineTo(R,barY); ctx.stroke();
+
+  var pts=[
+    {v:67.4, col:CYAN,   label:'CMB 67.4', below:true},
+    {v:73.96,col:GREEN,  label:'PRED 73.96', below:false},
+    {v:73.8, col:ORANGE, label:'LOCAL 73.8', below:true},
+  ];
+  pts.forEach(function(pt){
+    var x=bx2(pt.v);
+    ctx.beginPath(); ctx.arc(x,barY,5,0,Math.PI*2);
+    ctx.fillStyle=pt.col; ctx.fill();
+    mono(ctx,pt.label,x,pt.below?barY+16:barY-8,pt.col,8,'center');
+  });
+
+  // tension span
+  ctx.strokeStyle=ORANGE+'55'; ctx.lineWidth=1; ctx.setLineDash([2,2]);
+  ctx.beginPath(); ctx.moveTo(bx2(67.4),barY); ctx.lineTo(bx2(73.8),barY); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 0.18σ bracket
+  ctx.strokeStyle=GREEN+'88'; ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(bx2(73.8),barY-10); ctx.lineTo(bx2(73.96),barY-10);
+  ctx.moveTo(bx2(73.8),barY-13); ctx.lineTo(bx2(73.8),barY-7);
+  ctx.moveTo(bx2(73.96),barY-13); ctx.lineTo(bx2(73.96),barY-7);
+  ctx.stroke();
+  mono(ctx,'0.18σ',bx2((73.8+73.96)/2),barY-20,GREEN,7,'center');
+}
+
+// ── show/hide ────────────────────────────────────────────────────────────────
+var drawFns=[drawOverview,drawGamma,drawThermal,drawK11,drawMaster];
+var active=0;
+
+function show(i){
+  document.querySelectorAll('.tab').forEach(function(t,j){t.classList.toggle('on',j===i);});
+  [0,1,2,3,4].forEach(function(j){
+    document.getElementById('cv'+j).style.display=j===i?'flex':'none';
+    var p=document.getElementById('p'+j);
+    if(p) p.classList.toggle('on',j===i);
+  });
+  active=i;
+  drawFns[i]();
+}
+
+// init
+drawOverview();
+window.addEventListener('resize',function(){drawFns[active]();});
+</script>
+</body>
+</html>
