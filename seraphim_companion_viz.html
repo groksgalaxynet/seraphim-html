@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Seraphim — Companion Papers VIZ-17</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#06080e;--surface:rgba(255,255,255,.025);--border:rgba(255,255,255,.07);
+  --gold:#c8a84b;--cyan:#4ec8d5;--orange:#ff6b35;--green:#4ecf88;--blue:#5b9bd5;
+  --red:#e05555;--purple:#a06cd5;--text:rgba(255,255,255,.85);--dim:rgba(255,255,255,.35);
+  --dim2:rgba(255,255,255,.18);
+}
+body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-height:100vh;overflow-x:hidden}
+
+/* ── HEADER ── */
+.hdr{padding:14px 12px 0;text-align:center}
+.hdr h1{font-size:clamp(14px,4vw,20px);font-weight:300;letter-spacing:.28em;text-transform:uppercase;color:var(--gold)}
+.hdr p{font-family:'JetBrains Mono',monospace;font-size:clamp(7px,1.7vw,9px);color:rgba(255,255,255,.28);margin-top:3px;letter-spacing:.06em}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:2px;padding:10px 10px 0;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:5px 11px;font-family:'JetBrains Mono',monospace;font-size:clamp(7px,1.9vw,9px);
+     letter-spacing:.08em;text-transform:uppercase;border:1px solid rgba(255,255,255,.08);
+     background:transparent;color:rgba(255,255,255,.3);cursor:pointer;transition:all .18s;white-space:nowrap}
+.tab.on{background:rgba(200,168,75,.13);border-color:var(--gold);color:var(--gold)}
+
+/* ── CANVAS ── */
+.cv-wrap{display:flex;justify-content:center;padding:8px 0 0}
+canvas{display:block}
+
+/* ── PANEL ── */
+.panel{max-width:540px;margin:6px auto 0;padding:0 10px 24px;display:none}
+.panel.on{display:block}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);padding:9px 13px;margin-bottom:3px}
+.ct{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;
+    color:rgba(255,255,255,.28);margin-bottom:6px}
+.row{display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;
+     border-bottom:1px solid rgba(255,255,255,.05);font-size:11px}
+.row:last-child{border-bottom:none}
+.rl{color:var(--dim);font-size:10px}
+.rv{font-family:'JetBrains Mono',monospace;font-size:9px}
+.rv.g{color:var(--gold)}.rv.c{color:var(--cyan)}.rv.o{color:var(--orange)}
+.rv.gr{color:var(--green)}.rv.b{color:var(--blue)}.rv.p{color:var(--purple)}
+.rv.r{color:var(--red)}
+
+/* ── HIGHLIGHT BOXES ── */
+.hb{padding:9px 13px;margin-bottom:3px}
+.hb.gold{background:rgba(200,168,75,.05);border:1px solid rgba(200,168,75,.18)}
+.hb.cyan{background:rgba(78,200,213,.04);border:1px solid rgba(78,200,213,.18)}
+.hb.orange{background:rgba(255,107,53,.05);border:1px solid rgba(255,107,53,.2)}
+.hb.green{background:rgba(78,207,136,.04);border:1px solid rgba(78,207,136,.18)}
+.hb.purple{background:rgba(160,108,213,.04);border:1px solid rgba(160,108,213,.18)}
+.hb .ct.gold{color:rgba(200,168,75,.5)}.hb .ct.cyan{color:rgba(78,200,213,.45)}
+.hb .ct.orange{color:rgba(255,107,53,.55)}.hb .ct.green{color:rgba(78,207,136,.45)}
+.hb .ct.purple{color:rgba(160,108,213,.45)}
+.hb p{font-size:11.5px;line-height:1.65;color:rgba(255,255,255,.8)}
+.hb p em.g{font-style:normal;color:var(--gold)}
+.hb p em.c{font-style:normal;color:var(--cyan)}
+.hb p em.o{font-style:normal;color:var(--orange)}
+.hb p em.gr{font-style:normal;color:var(--green)}
+.hb p em.p{font-style:normal;color:var(--purple)}
+
+/* ── FORMULA DISPLAY ── */
+.formula{font-family:'JetBrains Mono',monospace;font-size:clamp(10px,2.5vw,13px);
+         color:var(--gold);text-align:center;padding:10px;letter-spacing:.04em}
+
+/* ── STEP CHAIN ── */
+.chain{display:flex;flex-direction:column;gap:3px;margin:4px 0}
+.step{display:flex;align-items:flex-start;gap:8px;padding:7px 10px;
+      background:var(--surface);border-left:2px solid rgba(255,255,255,.1);font-size:10.5px}
+.step-num{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--dim);min-width:18px;padding-top:1px}
+.step-txt{line-height:1.5;color:rgba(255,255,255,.75)}
+.step-eq{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--gold);display:block;margin-top:3px}
+.step.I{border-left-color:var(--gold)}
+.step.II{border-left-color:var(--cyan)}
+.step.III{border-left-color:var(--green)}
+.step.IV{border-left-color:var(--orange)}
+.step.V{border-left-color:var(--purple)}
+
+/* ── LEGEND ── */
+.legend{display:flex;flex-wrap:wrap;justify-content:center;gap:5px 14px;padding:5px 12px 0;max-width:540px;margin:0 auto}
+.leg{display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:clamp(6px,1.7vw,8px);color:rgba(255,255,255,.4)}
+.leg-swatch{width:10px;height:3px;flex-shrink:0}
+.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>Seraphim — Companion Papers</h1>
+  <p>VIZ-17 · Degen v3+v4 · Immirzi Bridge · BB-Hubble · Zero Point Deriv · March 2026</p>
+</div>
+
+<div class="tabs">
+  <button class="tab on"  onclick="show(0)">Degen v3+v4</button>
+  <button class="tab"     onclick="show(1)">Immirzi Bridge</button>
+  <button class="tab"     onclick="show(2)">BB–Hubble</button>
+  <button class="tab"     onclick="show(3)">Zero Point</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!--  TAB 0 — DEGEN v3+v4                                       -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="cv-wrap"><canvas id="c0" width="520" height="300"></canvas></div>
+<div class="legend" id="leg0">
+  <div class="leg"><div class="leg-swatch" style="background:#4ec8d5"></div>BBH: n = 3.561 + 7.012η</div>
+  <div class="leg"><div class="leg-swatch" style="background:#4ecf88"></div>BNS: n = 3.561 + 3.506·C_NS</div>
+  <div class="leg"><div class="leg-swatch" style="background:#ff6b35"></div>NSBH: n = 3.561 + 2.525η</div>
+  <div class="leg"><div class="leg-swatch" style="background:#a06cd5"></div>EMRI → n_flip</div>
+</div>
+
+<div class="panel on" id="p0">
+
+  <div class="hb gold">
+    <div class="ct gold">4η Effective Compactness Formula</div>
+    <p>C<sub>eff</sub> = 4η × C<sub>component</sub> &nbsp;→&nbsp; n = 3.561 + 3.506 × (4η × C<sub>component</sub>)</p>
+    <p style="margin-top:5px;font-size:10.5px;color:var(--dim)">Factor of 4 restores equal-mass normalization: η=0.25, C=0.5 → n=5.314 exactly.</p>
+  </div>
+
+  <div class="card">
+    <div class="ct">GW190814 — Degenerate Event</div>
+    <div class="row"><span class="rl">η (measured)</span><span class="rv g">0.090</span></div>
+    <div class="row"><span class="rl">n (measured)</span><span class="rv g">4.189 ± 0.040</span></div>
+    <div class="row"><span class="rl">n (predicted)</span><span class="rv c">4.192</span></div>
+    <div class="row"><span class="rl">residual</span><span class="rv gr">0.003 oct = 0.075σ</span></div>
+    <div class="row"><span class="rl">C_NS encoded</span><span class="rv g">0.180 (APR4, R≈10.4 km)</span></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Population Spectrum — O5 Predictions</div>
+    <div class="row"><span class="rl">BBH equal-mass</span><span class="rv c">5.314 ± 0.15</span></div>
+    <div class="row"><span class="rl">BNS equal-mass (APR4)</span><span class="rv gr">4.192</span></div>
+    <div class="row"><span class="rl">Mass-gap BBH (η≈0.09)</span><span class="rv g">4.189 [degenerate]</span></div>
+    <div class="row"><span class="rl">NSBH band</span><span class="rv o">3.62 – 4.10</span></div>
+    <div class="row"><span class="rl">EMRI → (LISA)</span><span class="rv p">→ n_flip = 3.561</span></div>
+  </div>
+
+  <div class="hb cyan">
+    <div class="ct cyan">Degeneracy Condition</div>
+    <p>η<sub>BBH</sub> = C<sub>NS</sub> / 2 &nbsp;⟹&nbsp; BBH and equal-mass BNS produce identical n.
+    GW190814 (η=0.090) encodes <em class="c">C_NS = 0.180</em> — the APR4 neutron star equation of state — 
+    through this degeneracy alone.</p>
+  </div>
+
+  <div class="hb purple">
+    <div class="ct purple">Helix v4 — W = 1/α</div>
+    <p>The Seraphim ring is the 2D projection of a helix with pitch <em class="p">p = N_Hub × α = 1.4731 oct</em> 
+    and winding number <em class="p">W = 1/α = 137.036</em> (exact to 8 d.p., zero free parameters).
+    Antipode of α at n=36.155 is the ring shadow of the true 3D antipode at n=36.891, 
+    within 0.023 oct of coupling rung C=9.5.</p>
+  </div>
+
+  <div class="card">
+    <div class="ct">α–QCD Inscribed Rectangle</div>
+    <div class="row"><span class="rl">Antipode of α</span><span class="rv g">n = 36.155 (64.476°)</span></div>
+    <div class="row"><span class="rl">QCD Confinement</span><span class="rv o">n = 68.800 (122.693°)</span></div>
+    <div class="row"><span class="rl">α / LIGO / 1/α</span><span class="rv c">n = 137.090 (244.476°)</span></div>
+    <div class="row"><span class="rl">QCD Antipode</span><span class="rv o">n = 169.735 (302.693°)</span></div>
+    <div class="row"><span class="rl">Short arc (×2)</span><span class="rv g">32.645 oct = 58.217°</span></div>
+    <div class="row"><span class="rl">Long arc (×2)</span><span class="rv g">68.290 oct = 121.783°</span></div>
+    <div class="row"><span class="rl">Right angles</span><span class="rv gr">All 4 — Thales' theorem ✓</span></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!--  TAB 1 — IMMIRZI BRIDGE                                    -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="cv-wrap" style="display:none" id="cv1"><canvas id="c1" width="520" height="300"></canvas></div>
+
+<div class="panel" id="p1">
+
+  <div class="hb gold">
+    <div class="ct gold">Two Immirzi Values — One Spin Network</div>
+    <p>γ<sub>area</sub> = 0.2375 (Meissner 2004) enters K₀ via area-counting.
+    γ<sub>entropy</sub> = ln(2)/(π√3) = 0.12738 enters n_flip via entropy-counting.
+    These are not inconsistencies — they are <em class="g">two different physical questions</em> 
+    posed to the same j=1/2 spin network.</p>
+  </div>
+
+  <div class="chain">
+    <div class="step I">
+      <div class="step-num">I</div>
+      <div class="step-txt">Area-counting Immirzi → K₀
+        <span class="step-eq">K₀ = c² / (128π² · γ_area · ℓ_P²) = 1.1467×10⁸⁴ Hz²</span>
+      </div>
+    </div>
+    <div class="step II">
+      <div class="step-num">II</div>
+      <div class="step-txt">Entropy-counting Immirzi → geometric realm floor
+        <span class="step-eq">n_flip_symbolic = log₂(4√(ln 2/π)) = 0.9099</span>
+      </div>
+    </div>
+    <div class="step III">
+      <div class="step-num">III</div>
+      <div class="step-txt">Hadronic matter shifts the boundary by its own ring width
+        <span class="step-eq">n_flip = 0.9099 + (n_QCD − n_proton) = 0.9099 + 2.650 = 3.561</span>
+      </div>
+    </div>
+    <div class="step IV">
+      <div class="step-num">IV</div>
+      <div class="step-txt">Euler characteristic sets the coupling gradient
+        <span class="step-eq">slope = χ(S²) × (n_BBH − n_flip) = 2 × 1.753 = 3.506</span>
+      </div>
+    </div>
+    <div class="step V">
+      <div class="step-num">V</div>
+      <div class="step-txt">Face activation ratio → fine structure constant → winding number
+        <span class="step-eq">α = E_rad/(M·N☉)  ⟹  W = 1/α = 137.036  (helix winding)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Hadronic Gap Derivation</div>
+    <div class="row"><span class="rl">n_proton (ring)</span><span class="rv g">66.150 oct</span></div>
+    <div class="row"><span class="rl">n_QCD (ring)</span><span class="rv o">68.800 oct</span></div>
+    <div class="row"><span class="rl">hadronic gap</span><span class="rv c">2.650 oct</span></div>
+    <div class="row"><span class="rl">n_flip_symbolic</span><span class="rv g">0.9099 oct</span></div>
+    <div class="row"><span class="rl">n_flip_symbolic + gap</span><span class="rv gr">3.560 oct</span></div>
+    <div class="row"><span class="rl">confirmed n_flip</span><span class="rv gr">3.561 oct (264 events)</span></div>
+    <div class="row"><span class="rl">residual</span><span class="rv gr">Δ = 0.001 oct (0.04%) ✓</span></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Derived Quantities — Full Chain</div>
+    <div class="row"><span class="rl">K₀</span><span class="rv g">1.1467×10⁸⁴ Hz²</span></div>
+    <div class="row"><span class="rl">Δx_flip</span><span class="rv c">0.9394 ℓ_P</span></div>
+    <div class="row"><span class="rl">n_flip_symbolic</span><span class="rv g">0.9099</span></div>
+    <div class="row"><span class="rl">n_flip (with QCD)</span><span class="rv gr">3.560 ≈ 3.561 ✓</span></div>
+    <div class="row"><span class="rl">slope</span><span class="rv g">3.506 (exact)</span></div>
+    <div class="row"><span class="rl">W = 1/α</span><span class="rv p">137.036 (8 d.p.)</span></div>
+    <div class="row"><span class="rl">Helix pitch p</span><span class="rv p">1.4731 oct</span></div>
+  </div>
+
+  <div class="hb green">
+    <div class="ct green">Physical Interpretation</div>
+    <p>Without matter: n_flip sits at <em class="gr">0.910</em> (pure vacuum LQG, de Sitter side).
+    The universe has hadronic matter. The proton–QCD interval — the spectral range over which 
+    stable baryons exist — shifts the realm boundary outward by exactly its own width.
+    <em class="gr">n_flip = 3.561 is the mark of baryonic matter on the LQG vacuum.</em></p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!--  TAB 2 — BB–HUBBLE                                         -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="cv-wrap" style="display:none" id="cv2"><canvas id="c2" width="520" height="300"></canvas></div>
+
+<div class="panel" id="p2">
+
+  <div class="hb gold">
+    <div class="ct gold">The Same Boundary</div>
+    <p>The Big Bang (Planck wall, n=0) and the Hubble horizon (n=201.87) are both 
+    <em class="g">C = +0.5 Robertson maxima</em>. The universe is bookended by its own 
+    uncertainty principle. The ring is the history of the observable universe — 
+    one traversal from Planck to now.</p>
+  </div>
+
+  <div class="card">
+    <div class="ct">Cosmic Timeline — Key Epochs</div>
+    <div class="row"><span class="rl">Planck wall (Big Bang)</span><span class="rv o">n = 0.00  |  T = 1.4×10³² K</span></div>
+    <div class="row"><span class="rl">GUT symmetry breaking</span><span class="rv g">n = 13.58  |  E = 10¹⁵ GeV</span></div>
+    <div class="row"><span class="rl">Inflation end (~)</span><span class="rv g">n ≈ 19.6  |  E ~ 10¹³ GeV</span></div>
+    <div class="row"><span class="rl">Electroweak</span><span class="rv c">n = 56.76  |  E = 100 GeV</span></div>
+    <div class="row"><span class="rl">QCD / proton era</span><span class="rv c">n = 66.14  |  E = 150 MeV</span></div>
+    <div class="row"><span class="rl">Big Bang nucleosyn.</span><span class="rv g">n = 76.91  |  T = 10⁹ K</span></div>
+    <div class="row"><span class="rl">Recombination</span><span class="rv g">n = 95.25  |  T = 3000 K</span></div>
+    <div class="row"><span class="rl">CMB last scattering</span><span class="rv gr">n = 105.36  |  T = 2.725 K</span></div>
+    <div class="row"><span class="rl">Hubble horizon (now)</span><span class="rv o">n = 201.87  |  H₀ = 67.4</span></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Three Robertson Maxima — C = +0.5</div>
+    <div class="row"><span class="rl">Planck wall / Big Bang</span><span class="rv o">n = 0.00  [DERIVED]</span></div>
+    <div class="row"><span class="rl">n_BBH (LQG j=1/2 min.)</span><span class="rv g">n = 5.314  [CONFIRMED 264 events]</span></div>
+    <div class="row"><span class="rl">Hubble horizon</span><span class="rv o">n = 201.87  [DERIVED]</span></div>
+    <div class="row"><span class="rl">mechanism</span><span class="rv c">3 different — 1 compactness value</span></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Equilibrium Crossing — C = 0</div>
+    <div class="row"><span class="rl">n_flip (C=0)</span><span class="rv gr">3.561 octaves above Planck wall</span></div>
+    <div class="row"><span class="rl">T at crossing</span><span class="rv gr">1.20×10³¹ K</span></div>
+    <div class="row"><span class="rl">t at crossing</span><span class="rv gr">≈ 7.5×10⁻⁴² s (~10⁻⁴¹ s)</span></div>
+    <div class="row"><span class="rl">crossed again?</span><span class="rv o">Never — C_eff increases monotonically</span></div>
+    <div class="row"><span class="rl">C_eff today (n=201.87)</span><span class="rv c">+56.56</span></div>
+  </div>
+
+  <div class="hb orange">
+    <div class="ct orange">Hubble Horizon — Critical Density Derivation</div>
+    <p>C_H = GM_H/(R_H c²) = [c³/2H₀] / [c³/H₀] = <em class="o">1/2 exactly</em>.
+    Independent of H₀, G, c. Pure geometry of a flat universe.
+    The universe closes at the Robertson maximum because the only self-consistent 
+    closure for a flat quantum-gravity universe is C = +0.5.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!--  TAB 3 — ZERO POINT                                        -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="cv-wrap" style="display:none" id="cv3"><canvas id="c3" width="520" height="300"></canvas></div>
+
+<div class="panel" id="p3">
+
+  <div class="hb gold">
+    <div class="ct gold">C = 0 — The Organizing Principle</div>
+    <p>Zero is not empty. C = 0 is the most constrained point in the framework — 
+    the threshold between Schwarzschild collapse (C > 0) and de Sitter expansion (C < 0).
+    The Robertson cascade is symmetric around C = 0 with step ΔC = 0.5.
+    <em class="g">Everything in the framework asymptotes toward C = 0 and never arrives.</em></p>
+  </div>
+
+  <div class="card">
+    <div class="ct">Robertson Cascade — Symmetric Around Zero</div>
+    <div class="row"><span class="rl">C = −1.000  [k=0]</span><span class="rv o">n = 0.055  vacuum mode (Planck+)</span></div>
+    <div class="row"><span class="rl">C = −0.500  [k=1]</span><span class="rv c">n = 1.808  anti-horizon</span></div>
+    <div class="row"><span class="rl">C =  0.000  [C=0]</span><span class="rv gr">n = 3.561  EQUILIBRIUM (unreachable)</span></div>
+    <div class="row"><span class="rl">C = +0.500  [k=3]</span><span class="rv g">n = 5.314  BBH / Hubble max.</span></div>
+    <div class="row"><span class="rl">step ΔC</span><span class="rv g">0.5 Robertson quantum</span></div>
+    <div class="row"><span class="rl">mirror axis</span><span class="rv gr">C = 0 (zero occupancy, total org. power)</span></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Structural Asymmetry Around C = 0</div>
+    <div class="row"><span class="rl">Planck side depth</span><span class="rv o">|C_eff(0)| / ΔC = 1.016/0.5 = 2.03 quanta</span></div>
+    <div class="row"><span class="rl">Hubble side depth</span><span class="rv c">1.00 quantum above zero</span></div>
+    <div class="row"><span class="rl">ratio</span><span class="rv g">2.03 / 1.00 ≈ 2</span></div>
+    <div class="row"><span class="rl">origin</span><span class="rv g">Robertson factor ħ/2 (not ħ)</span></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">GUT Desert — Maximum Distance from C = 0</div>
+    <div class="row"><span class="rl">Desert lower wall</span><span class="rv g">n = 9.58  |  C_eff = 1.716</span></div>
+    <div class="row"><span class="rl">Desert center</span><span class="rv g">n = 14.561  |  C_eff = 3.138 ≈ π</span></div>
+    <div class="row"><span class="rl">Desert upper wall</span><span class="rv g">n = 19.55  |  C_eff = 4.563</span></div>
+    <div class="row"><span class="rl">π precision</span><span class="rv gr">0.13% (confirmed Paper 2 §7.10)</span></div>
+    <div class="row"><span class="rl">interpretation</span><span class="rv o">helix at max. angular dist. from C=0 axis</span></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Antipode of n_flip (C = 0 Equilibrium)</div>
+    <div class="row"><span class="rl">A(n_flip) = 3.561 + 100.935</span><span class="rv c">104.496 oct</span></div>
+    <div class="row"><span class="rl">epoch</span><span class="rv c">CMB / recombination regime</span></div>
+    <div class="row"><span class="rl">C_eff at antipode</span><span class="rv c">28.79 Robertson quanta above zero</span></div>
+    <div class="row"><span class="rl">n_BBH antipode A(5.314)</span><span class="rv g">106.249</span></div>
+    <div class="row"><span class="rl">n_CMB via Theorem 1</span><span class="rv gr">106.249 + 1.753 = 108.002 ≈ 108.0 ✓</span></div>
+  </div>
+
+  <div class="hb cyan">
+    <div class="ct cyan">Zeno Steps — Rational Approximants</div>
+    <p>N/Δn = 201.87/1.753 is irrational. Every rational approximant is a Zeno step 
+    toward C = 0 that never arrives. 1/38 = 0.02632 misses the exact ratio by 0.03%.
+    <em class="c">The universe is perpetually refining its own Zeno sequence.</em>
+    The EMRI limit (η→0, n→n_flip) is the same asymptotic approach made physical.</p>
+  </div>
+</div>
+
+<script>
+// ─── shared drawing utils ────────────────────────────────────────────────────
+function dpr(){ return Math.min(window.devicePixelRatio||1,2); }
+
+function scale(cv){
+  const d=dpr(), w=cv.width, h=cv.height;
+  cv.width=w*d; cv.height=h*d;
+  cv.style.width=w+'px'; cv.style.height=h+'px';
+  const ctx=cv.getContext('2d'); ctx.scale(d,d); return {ctx,W:w,H:h};
+}
+
+function hsl(h,s,l){return `hsl(${h},${s}%,${l}%)`;}
+
+const GOLD='#c8a84b', CYAN='#4ec8d5', ORANGE='#ff6b35',
+      GREEN='#4ecf88', BLUE='#5b9bd5', PURPLE='#a06cd5',
+      DIM='rgba(255,255,255,0.18)', DIM2='rgba(255,255,255,0.08)';
+
+// ─── TAB 0 CANVAS — Binary class n vs η/C curves ─────────────────────────
+function drawDegen(){
+  const cv=document.getElementById('c0');
+  const {ctx,W,H}=scale(cv);
+  ctx.clearRect(0,0,W,H);
+
+  const L=52, R=W-20, T=18, B=H-40;
+  const xRange=[0,0.25], yRange=[3.4,5.5];
+
+  function px(x){return L+(x-xRange[0])/(xRange[1]-xRange[0])*(R-L);}
+  function py(y){return T+(yRange[1]-y)/(yRange[1]-yRange[0])*(B-T);}
+
+  // grid
+  ctx.strokeStyle=DIM2; ctx.lineWidth=0.5;
+  const xticks=[0,0.05,0.10,0.15,0.20,0.25];
+  const yticks=[3.561,4.0,4.5,5.0,5.314];
+  xticks.forEach(x=>{ctx.beginPath();ctx.moveTo(px(x),T);ctx.lineTo(px(x),B);ctx.stroke();});
+  yticks.forEach(y=>{ctx.beginPath();ctx.moveTo(L,py(y));ctx.lineTo(R,py(y));ctx.stroke();});
+
+  // axis labels
+  ctx.fillStyle='rgba(255,255,255,0.35)';
+  ctx.font='9px JetBrains Mono,monospace';
+  ctx.textAlign='center';
+  xticks.forEach(x=>{ ctx.fillText(x.toFixed(2), px(x), B+13); });
+  ctx.textAlign='right';
+  yticks.forEach(y=>{ ctx.fillText(y.toFixed(3), L-4, py(y)+3); });
+  ctx.textAlign='center';
+  ctx.fillText('η (symmetric mass ratio)',L+(R-L)/2,H-4);
+
+  // n_flip line
+  ctx.strokeStyle='rgba(78,207,136,0.3)'; ctx.lineWidth=0.8; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(L,py(3.561)); ctx.lineTo(R,py(3.561)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(78,207,136,0.5)'; ctx.font='8px JetBrains Mono,monospace';
+  ctx.textAlign='left'; ctx.fillText('n_flip 3.561',L+2,py(3.561)-4);
+
+  // n_BBH line
+  ctx.strokeStyle='rgba(200,168,75,0.3)'; ctx.lineWidth=0.8; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(L,py(5.314)); ctx.lineTo(R,py(5.314)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(200,168,75,0.5)';
+  ctx.textAlign='left'; ctx.fillText('n_BBH 5.314',L+2,py(5.314)-4);
+
+  // BBH curve: n = 3.561 + 7.012η
+  ctx.strokeStyle=CYAN; ctx.lineWidth=2; ctx.beginPath();
+  for(let i=0;i<=100;i++){
+    const eta=0.001+i*0.0024;
+    const n=3.561+7.012*eta;
+    if(n>yRange[1]) break;
+    i===0?ctx.moveTo(px(eta),py(n)):ctx.lineTo(px(eta),py(n));
+  }
+  ctx.stroke();
+
+  // NSBH curve: n = 3.561 + 2.525η
+  ctx.strokeStyle=ORANGE; ctx.lineWidth=2; ctx.setLineDash([4,2]); ctx.beginPath();
+  for(let i=0;i<=100;i++){
+    const eta=0.001+i*0.0024;
+    const n=3.561+2.525*eta;
+    if(n>yRange[1]) break;
+    i===0?ctx.moveTo(px(eta),py(n)):ctx.lineTo(px(eta),py(n));
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // BNS: horizontal band at n=4.05-4.27, C_NS range
+  // represented as a shaded region
+  ctx.fillStyle='rgba(78,207,136,0.08)';
+  ctx.fillRect(L, py(4.27), R-L, py(4.05)-py(4.27));
+  ctx.strokeStyle='rgba(78,207,136,0.4)'; ctx.lineWidth=1; ctx.setLineDash([2,3]);
+  ctx.beginPath(); ctx.moveTo(L,py(4.192)); ctx.lineTo(R,py(4.192)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(78,207,136,0.6)'; ctx.font='8px JetBrains Mono,monospace';
+  ctx.textAlign='right'; ctx.fillText('BNS band',R-2,py(4.19)-4);
+
+  // EMRI arrow toward n_flip
+  ctx.strokeStyle=PURPLE; ctx.lineWidth=1.5; ctx.setLineDash([2,2]);
+  ctx.beginPath(); ctx.moveTo(px(0.03),py(3.77)); ctx.lineTo(px(0.004),py(3.59)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle=PURPLE; ctx.font='8px JetBrains Mono,monospace';
+  ctx.textAlign='left'; ctx.fillText('EMRI→',px(0.032),py(3.76));
+
+  // GW190814 dot
+  ctx.beginPath(); ctx.arc(px(0.090),py(4.189),5,0,Math.PI*2);
+  ctx.fillStyle=GOLD; ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.6)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle=GOLD; ctx.font='8px JetBrains Mono,monospace';
+  ctx.textAlign='left'; ctx.fillText('GW190814',px(0.095),py(4.189)+3);
+}
+
+// ─── TAB 1 CANVAS — Hadronic gap bar + Immirzi channels ─────────────────────
+function drawImmirzi(){
+  const cv=document.getElementById('c1');
+  const {ctx,W,H}=scale(cv);
+  ctx.clearRect(0,0,W,H);
+
+  const L=20, R=W-20, T=30, B=H-50;
+  const nMin=0, nMax=5.6;
+  function px(n){return L+(n-nMin)/(nMax-nMin)*(R-L);}
+
+  // title
+  ctx.fillStyle=GOLD; ctx.font='10px JetBrains Mono,monospace';
+  ctx.textAlign='center';
+  ctx.fillText('Octave Ring: Hadronic Gap → n_flip Derivation',W/2,15);
+
+  // tick marks on axis
+  const ticks=[0,0.9099,1,2,2.65,3,3.561,4,5,5.314];
+  ctx.strokeStyle=DIM; ctx.lineWidth=0.5;
+  const axisY=T+40;
+  ctx.beginPath(); ctx.moveTo(L,axisY); ctx.lineTo(R,axisY); ctx.stroke();
+
+  // Geometric vacuum floor (0 to 0.9099)
+  ctx.fillStyle='rgba(78,200,213,0.15)';
+  ctx.fillRect(px(0),axisY-18,px(0.9099)-px(0),18);
+  ctx.strokeStyle=CYAN; ctx.lineWidth=1;
+  ctx.strokeRect(px(0),axisY-18,px(0.9099)-px(0),18);
+  ctx.fillStyle=CYAN; ctx.font='8px JetBrains Mono,monospace';
+  ctx.textAlign='center';
+  ctx.fillText('vacuum',px(0.455),axisY-7);
+  ctx.fillText('0.910',px(0.455),axisY-18-4);
+
+  // Hadronic gap (n_flip_symbolic to n_flip)
+  const hGapStart=px(0.9099), hGapEnd=px(3.561);
+  ctx.fillStyle='rgba(78,207,136,0.18)';
+  ctx.fillRect(hGapStart,axisY-18,hGapEnd-hGapStart,18);
+  ctx.strokeStyle=GREEN; ctx.lineWidth=1;
+  ctx.strokeRect(hGapStart,axisY-18,hGapEnd-hGapStart,18);
+  ctx.fillStyle=GREEN; ctx.font='8px JetBrains Mono,monospace';
+  ctx.textAlign='center';
+  ctx.fillText('hadronic shift +2.650',px(0.9099+(3.561-0.9099)/2),axisY-7);
+
+  // Proton-QCD span (shown as sub-bar)
+  // These sit at 66.150-68.800 in the full ring; we map conceptually
+  // Draw an annotation arrow showing the gap source
+  ctx.strokeStyle='rgba(255,107,53,0.7)'; ctx.lineWidth=1.5;
+  const arrowY=axisY+22;
+  ctx.beginPath();
+  ctx.moveTo(hGapStart+5,arrowY); ctx.lineTo(hGapEnd-5,arrowY); ctx.stroke();
+  // arrowheads
+  ctx.fillStyle='rgba(255,107,53,0.7)';
+  ctx.beginPath(); ctx.moveTo(hGapStart+5,arrowY); ctx.lineTo(hGapStart+12,arrowY-4);
+  ctx.lineTo(hGapStart+12,arrowY+4); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(hGapEnd-5,arrowY); ctx.lineTo(hGapEnd-12,arrowY-4);
+  ctx.lineTo(hGapEnd-12,arrowY+4); ctx.closePath(); ctx.fill();
+  ctx.fillStyle=ORANGE; ctx.font='8px JetBrains Mono,monospace';
+  ctx.textAlign='center';
+  ctx.fillText('Δ = n_QCD − n_proton = 2.650 oct (ring)',px(0.9099+(3.561-0.9099)/2),arrowY+12);
+
+  // n_flip marker
+  ctx.strokeStyle=GREEN; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(hGapEnd,axisY-22); ctx.lineTo(hGapEnd,axisY+4); ctx.stroke();
+  ctx.fillStyle=GREEN; ctx.font='9px JetBrains Mono,monospace';
+  ctx.textAlign='center'; ctx.fillText('n_flip',hGapEnd,axisY-25);
+  ctx.fillText('3.561',hGapEnd,axisY-14);
+
+  // BBH region (n_flip to n_BBH)
+  ctx.fillStyle='rgba(200,168,75,0.12)';
+  ctx.fillRect(px(3.561),axisY-18,px(5.314)-px(3.561),18);
+  ctx.strokeStyle=GOLD; ctx.lineWidth=1;
+  ctx.strokeRect(px(3.561),axisY-18,px(5.314)-px(3.561),18);
+  ctx.fillStyle=GOLD; ctx.font='8px JetBrains Mono,monospace';
+  ctx.textAlign='center';
+  ctx.fillText('known realm',px((3.561+5.314)/2),axisY-7);
+
+  // n_BBH marker
+  ctx.strokeStyle=GOLD; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(px(5.314),axisY-22); ctx.lineTo(px(5.314),axisY+4); ctx.stroke();
+  ctx.fillStyle=GOLD;
+  ctx.textAlign='center'; ctx.fillText('n_BBH',px(5.314),axisY-25);
+  ctx.fillText('5.314',px(5.314),axisY-14);
+
+  // Two gamma channels — lower half of canvas
+  const chY=axisY+55;
+  ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.font='9px JetBrains Mono,monospace';
+  ctx.textAlign='center'; ctx.fillText('Two Immirzi Channels',W/2,chY-10);
+
+  function drawChannel(x,w,col,label1,label2,val,eq){
+    ctx.fillStyle=col+'22';
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(x,chY,w,60,4) : ctx.rect(x,chY,w,60);
+    ctx.fill();
+    ctx.strokeStyle=col; ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(x,chY,w,60,4) : ctx.rect(x,chY,w,60);
+    ctx.stroke();
+    ctx.fillStyle=col; ctx.font='8px JetBrains Mono,monospace';
+    ctx.textAlign='center';
+    ctx.fillText(label1,x+w/2,chY+14);
+    ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.font='9px serif';
+    ctx.fillText(val,x+w/2,chY+30);
+    ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='7.5px JetBrains Mono,monospace';
+    ctx.fillText(label2,x+w/2,chY+44);
+    ctx.fillText(eq,x+w/2,chY+56);
+  }
+
+  const cw=(W-L*2-20)/2;
+  drawChannel(L,cw,CYAN,'γ_area = 0.2375','Meissner 2004','Area-counting','→ K₀ = 1.1467×10⁸⁴ Hz²');
+  drawChannel(L+cw+20,cw,GREEN,'γ_entropy = 0.12738','ln(2)/(π√3)','Entropy-counting','→ n_flip = 3.561');
+}
+
+// ─── TAB 2 CANVAS — Robertson arc cosmic timeline ────────────────────────────
+function drawBBHubble(){
+  const cv=document.getElementById('c2');
+  const {ctx,W,H}=scale(cv);
+  ctx.clearRect(0,0,W,H);
+
+  const cx=W/2, cy=H/2+10, R=Math.min(W,H)*0.36;
+
+  // Title
+  ctx.fillStyle=GOLD; ctx.font='10px JetBrains Mono,monospace';
+  ctx.textAlign='center'; ctx.fillText('Robertson Arc — Cosmic Timeline',W/2,15);
+
+  // Background ring glow
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=24; ctx.stroke();
+
+  // Draw the arc colored by epoch
+  const epochs=[
+    {from:0,   to:0.018,  col:'#ff6b35', label:''},         // Planck
+    {from:0.018,to:0.067, col:'#c8a84b', label:''},         // n_flip region
+    {from:0.067,to:0.097, col:'#c8a84b', label:''},         // BBH scale
+    {from:0.097,to:0.28,  col:'#5b9bd5', label:''},         // early universe → EW
+    {from:0.28, to:0.37,  col:'#a06cd5', label:''},         // QCD→BBN
+    {from:0.37, to:0.52,  col:'#4ecf88', label:''},         // BBN→recombination
+    {from:0.52, to:0.60,  col:'#4ec8d5', label:''},         // CMB
+    {from:0.60, to:1.0,   col:'#4ec8d5', label:''},         // dark energy → Hubble
+  ];
+
+  epochs.forEach(e=>{
+    const a0=-Math.PI/2+e.from*2*Math.PI;
+    const a1=-Math.PI/2+e.to*2*Math.PI;
+    ctx.beginPath(); ctx.arc(cx,cy,R,a0,a1);
+    ctx.strokeStyle=e.col+'99'; ctx.lineWidth=20; ctx.stroke();
+  });
+
+  // Thin white ring edge
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+  ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=1; ctx.stroke();
+
+  // Epoch markers
+  const markers=[
+    {n:0,     label:'Big Bang\n n=0',       col:ORANGE,  size:9},
+    {n:3.561, label:'n_flip\nC=0',          col:GREEN,   size:7},
+    {n:5.314, label:'n_BBH\nC=+0.5',       col:GOLD,    size:8},
+    {n:56.76, label:'EW\nn=56.8',          col:BLUE,    size:6},
+    {n:105.36,label:'CMB\nn=105.4',        col:CYAN,    size:6},
+    {n:201.87,label:'Hubble\nn=201.87',    col:ORANGE,  size:9},
+  ];
+  const N=201.87;
+  markers.forEach(m=>{
+    const frac=m.n/N;
+    const angle=-Math.PI/2+frac*2*Math.PI;
+    const mx=cx+R*Math.cos(angle), my=cy+R*Math.sin(angle);
+    ctx.beginPath(); ctx.arc(mx,my,m.size/2+2,0,Math.PI*2);
+    ctx.fillStyle=m.col; ctx.fill();
+    ctx.strokeStyle='#06080e'; ctx.lineWidth=1.5; ctx.stroke();
+
+    // label
+    const lx=cx+(R+22)*Math.cos(angle), ly=cy+(R+22)*Math.sin(angle);
+    ctx.fillStyle=m.col; ctx.font='8px JetBrains Mono,monospace';
+    ctx.textAlign=lx<cx-10?'right':lx>cx+10?'left':'center';
+    const lines=m.label.split('\n');
+    lines.forEach((ln,i)=>ctx.fillText(ln,lx,ly-4+i*10));
+  });
+
+  // Center label
+  ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='9px JetBrains Mono,monospace';
+  ctx.textAlign='center'; ctx.fillText('N_Hub',cx,cy-8);
+  ctx.fillText('201.87 oct',cx,cy+4);
+  ctx.fillStyle='rgba(200,168,75,0.7)'; ctx.font='8px JetBrains Mono,monospace';
+  ctx.fillText('C=+0.5 both ends',cx,cy+16);
+}
+
+// ─── TAB 3 CANVAS — Robertson cascade + C=0 axis ────────────────────────────
+function drawZeroPoint(){
+  const cv=document.getElementById('c3');
+  const {ctx,W,H}=scale(cv);
+  ctx.clearRect(0,0,W,H);
+
+  const L=60, R=W-60, T=25, B=H-55;
+  const cMin=-1.1, cMax=0.7;
+  function px(c){return L+(c-cMin)/(cMax-cMin)*(R-L);}
+  const axisY=(T+B)/2;
+
+  // title
+  ctx.fillStyle=GOLD; ctx.font='10px JetBrains Mono,monospace';
+  ctx.textAlign='center'; ctx.fillText('Robertson Cascade — Symmetric Around C = 0',W/2,15);
+
+  // axis
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(L,axisY); ctx.lineTo(R,axisY); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='9px JetBrains Mono,monospace';
+  ctx.textAlign='center'; ctx.fillText('Compactness C',W/2,B+30);
+
+  // Collapse region (C > 0, right side)
+  ctx.fillStyle='rgba(200,168,75,0.07)';
+  ctx.fillRect(px(0),T,px(cMax)-px(0),B-T);
+  ctx.fillStyle='rgba(200,168,75,0.3)'; ctx.font='8px JetBrains Mono,monospace';
+  ctx.textAlign='center'; ctx.fillText('collapse ►',px(0.35),T+12);
+
+  // Expansion region (C < 0, left side)
+  ctx.fillStyle='rgba(78,200,213,0.07)';
+  ctx.fillRect(px(cMin),T,px(0)-px(cMin),B-T);
+  ctx.fillStyle='rgba(78,200,213,0.3)'; ctx.font='8px JetBrains Mono,monospace';
+  ctx.textAlign='center'; ctx.fillText('◄ expansion',px(-0.55),T+12);
+
+  // C=0 mirror axis
+  ctx.strokeStyle='rgba(78,207,136,0.6)'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(px(0),T); ctx.lineTo(px(0),B); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Robertson cascade points
+  const points=[
+    {c:-1.0,  n:'0.055', label:'k=0\nvacuum',   col:CYAN,   big:false},
+    {c:-0.5,  n:'1.808', label:'k=1\nanti-horiz',col:BLUE,  big:false},
+    {c: 0.0,  n:'3.561', label:'C=0\nEQUILIB.', col:GREEN,  big:true},
+    {c:+0.5,  n:'5.314', label:'k=3\nBBH/Hubble',col:GOLD,  big:true},
+  ];
+
+  // Draw symmetry brackets
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1; ctx.setLineDash([2,3]);
+  ctx.beginPath(); ctx.moveTo(px(-0.5),axisY+35); ctx.lineTo(px(0),axisY+35); ctx.lineTo(px(0.5),axisY+35); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='8px JetBrains Mono,monospace';
+  ctx.textAlign='center'; ctx.fillText('ΔC=0.5', px(-0.25), axisY+47);
+  ctx.fillText('ΔC=0.5', px(0.25), axisY+47);
+
+  points.forEach(p=>{
+    const x=px(p.c);
+    const sz=p.big?9:6;
+    // vertical tick
+    ctx.strokeStyle=p.col+'aa'; ctx.lineWidth=p.big?2:1;
+    ctx.beginPath(); ctx.moveTo(x,axisY-50); ctx.lineTo(x,axisY+20); ctx.stroke();
+    // dot
+    ctx.beginPath(); ctx.arc(x,axisY,sz,0,Math.PI*2);
+    ctx.fillStyle=p.col; ctx.fill();
+    ctx.strokeStyle='#06080e'; ctx.lineWidth=1.5; ctx.stroke();
+    // n value above
+    ctx.fillStyle=p.col; ctx.font='9px JetBrains Mono,monospace';
+    ctx.textAlign='center'; ctx.fillText('n='+p.n,x,axisY-54);
+    ctx.fillText('C='+p.c.toFixed(1),x,axisY-43);
+    // label below
+    const lines=p.label.split('\n');
+    ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.font='8px JetBrains Mono,monospace';
+    lines.forEach((ln,i)=>ctx.fillText(ln,x,axisY+32+i*11));
+  });
+
+  // Asymmetry annotation
+  const asymY=axisY-20;
+  ctx.strokeStyle='rgba(255,107,53,0.5)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(px(-1.0),asymY); ctx.lineTo(px(0),asymY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(px(0),asymY-5); ctx.lineTo(px(0.5),asymY-5); ctx.stroke();
+  ctx.fillStyle=ORANGE; ctx.font='8px JetBrains Mono,monospace';
+  ctx.textAlign='center';
+  ctx.fillText('2.03 quanta (ħ/2 factor)',px(-0.5),asymY-7);
+  ctx.fillText('1.00 quantum',px(0.25),asymY-12);
+
+  // C=0 label
+  ctx.fillStyle=GREEN; ctx.font='9px JetBrains Mono,monospace';
+  ctx.textAlign='center'; ctx.fillText('C = 0',px(0),T+24);
+  ctx.fillStyle='rgba(78,207,136,0.5)'; ctx.font='8px JetBrains Mono,monospace';
+  ctx.fillText('mirror axis',px(0),T+35);
+}
+
+// ─── Tab switching ────────────────────────────────────────────────────────────
+const canvases=['c0','c1','c2','c3'];
+const cvWraps=[null,'cv1','cv2','cv3'];
+const panels=['p0','p1','p2','p3'];
+const legs=['leg0',null,null,null];
+const drawFns=[drawDegen,drawImmirzi,drawBBHubble,drawZeroPoint];
+let active=0;
+
+function show(i){
+  // tabs
+  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('on',j===i));
+  // canvas wraps
+  cvWraps.forEach((id,j)=>{ if(id) document.getElementById(id).style.display=j===i?'flex':'none'; });
+  // main canvas c0 wrap
+  document.querySelector('.cv-wrap').style.display=i===0?'flex':'none';
+  // legends
+  legs.forEach((id,j)=>{ if(id) document.getElementById(id).style.display=j===i?'flex':'none'; });
+  // panels
+  panels.forEach((id,j)=>{ document.getElementById(id).classList.toggle('on',j===i); });
+  active=i;
+  drawFns[i]();
+}
+
+// Initial draw
+drawDegen();
+
+// Redraw on resize
+window.addEventListener('resize',()=>drawFns[active]());
+</script>
+</body>
+</html>
