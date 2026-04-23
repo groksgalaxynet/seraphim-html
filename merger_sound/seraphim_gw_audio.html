@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seraphim — GW Chirp Audio</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#020408;--panel:#060c12;--border:#0a1825;
+  --cyan:#00c8ff;--gold:#f0c040;--green:#00ff88;
+  --red:#ff4455;--orange:#ff8040;--purple:#c060ff;
+  --dim:#1a2a3a;--text:#b8ccd8;--sub:#4a6070;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;min-height:100vh;}
+.wrap{max-width:1100px;margin:0 auto;padding:18px 16px;}
+
+header{margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+h1{font-family:'Orbitron',sans-serif;font-size:1.15rem;font-weight:800;color:var(--cyan);
+   text-shadow:0 0 24px rgba(0,200,255,0.4);letter-spacing:0.06em;}
+.hdr-sub{font-size:0.67rem;color:var(--sub);margin-top:3px;}
+
+.top-grid{display:grid;grid-template-columns:1fr 280px;gap:12px;margin-bottom:12px;}
+.bot-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:3px;padding:13px;}
+.ptitle{font-family:'Orbitron',sans-serif;font-size:0.57rem;color:var(--sub);
+        letter-spacing:0.14em;text-transform:uppercase;margin-bottom:9px;}
+
+canvas{display:block;width:100%;}
+
+/* Event selector */
+#eventSelect{width:100%;background:#040a10;color:var(--cyan);border:1px solid var(--dim);
+             padding:5px 7px;font-family:'Share Tech Mono',monospace;font-size:0.63rem;
+             border-radius:2px;cursor:pointer;outline:none;margin-bottom:8px;}
+
+/* Buttons */
+.btn-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+.btn{font-family:'Share Tech Mono',monospace;font-size:0.63rem;padding:6px 12px;
+     border-radius:2px;cursor:pointer;border:1px solid;transition:all 0.15s;background:transparent;}
+.btn.play{border-color:var(--cyan);color:var(--cyan);}
+.btn.play:hover,.btn.play.active{background:rgba(0,200,255,0.12);}
+.btn.dl{border-color:var(--green);color:var(--green);}
+.btn.dl:hover{background:rgba(0,255,136,0.1);}
+.btn.dl:disabled{opacity:0.35;cursor:default;}
+.btn.stop{border-color:var(--dim);color:var(--sub);}
+.btn.stop:hover{border-color:var(--red);color:var(--red);}
+
+/* Pitch toggle */
+.toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:0.62rem;}
+.toggle-label{color:var(--sub);}
+.toggle-wrap{display:flex;gap:0;}
+.toggle-btn{padding:3px 9px;font-size:0.6rem;font-family:'Share Tech Mono',monospace;
+            border:1px solid var(--dim);cursor:pointer;color:var(--sub);background:transparent;transition:all 0.12s;}
+.toggle-btn:first-child{border-radius:2px 0 0 2px;}
+.toggle-btn:last-child{border-radius:0 2px 2px 0;border-left:none;}
+.toggle-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(240,192,64,0.1);}
+
+/* Sliders */
+.sl-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.sl-lbl{font-size:0.6rem;color:var(--sub);width:70px;flex-shrink:0;}
+input[type=range]{flex:1;height:3px;background:var(--dim);-webkit-appearance:none;
+                  outline:none;border-radius:2px;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;
+  border-radius:50%;background:var(--cyan);cursor:pointer;}
+input[type=range].gold::-webkit-slider-thumb{background:var(--gold);}
+input[type=range].grn::-webkit-slider-thumb{background:var(--green);}
+.sl-val{font-size:0.62rem;color:var(--cyan);width:42px;text-align:right;}
+
+/* Stats */
+.stat-row{display:flex;justify-content:space-between;font-size:0.65rem;
+          margin-bottom:4px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.03);}
+.sk{color:var(--sub);} .sv{color:var(--cyan);}
+.sv.gold{color:var(--gold);} .sv.green{color:var(--green);}
+.sv.purple{color:var(--purple);}
+
+/* Phase indicator */
+.phase-row{display:flex;gap:6px;margin-top:6px;}
+.ph{flex:1;text-align:center;padding:4px;border-radius:2px;border:1px solid;
+    font-family:'Orbitron',sans-serif;font-size:0.55rem;letter-spacing:0.08em;
+    transition:all 0.2s;}
+.ph.idle{border-color:var(--dim);color:var(--sub);}
+.ph.active-ins{border-color:rgba(0,200,255,0.5);color:var(--cyan);background:rgba(0,200,255,0.08);
+               text-shadow:0 0 8px rgba(0,200,255,0.5);}
+.ph.active-mrg{border-color:rgba(240,192,64,0.5);color:var(--gold);background:rgba(240,192,64,0.1);}
+.ph.active-rng{border-color:rgba(192,96,255,0.5);color:var(--purple);background:rgba(192,96,255,0.08);}
+
+/* Spectrogram label */
+.spec-label{font-size:0.6rem;color:var(--sub);margin-bottom:4px;display:flex;justify-content:space-between;}
+
+/* Progress bar */
+.prog-track{height:4px;background:var(--dim);border-radius:2px;margin-top:4px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:2px;
+           background:linear-gradient(90deg,var(--purple),var(--cyan),var(--gold));
+           width:0%;transition:width 0.05s;}
+
+/* n display */
+.n-box{text-align:center;padding:8px 0 4px;margin-top:6px;border-top:1px solid var(--border);}
+.n-val{font-family:'Orbitron',sans-serif;font-size:1.8rem;font-weight:800;color:var(--gold);
+       text-shadow:0 0 16px rgba(240,192,64,0.4);}
+.n-sub{font-size:0.58rem;color:var(--sub);margin-top:2px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>SERAPHIM GW CHIRP AUDIO</h1>
+  <div class="hdr-sub">POST-NEWTONIAN WAVEFORM FROM POSTERIOR MEDIANS · WEB AUDIO API · WAV EXPORT</div>
+</header>
+
+<div class="top-grid">
+  <!-- Left: waveform + spectrogram -->
+  <div style="display:flex;flex-direction:column;gap:10px;">
+
+    <div class="panel">
+      <div class="ptitle">WAVEFORM h(t) — GW STRAIN AMPLITUDE</div>
+      <canvas id="waveCanvas" height="130"></canvas>
+      <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle">SPECTROGRAM — FREQUENCY vs TIME</div>
+      <div class="spec-label">
+        <span>Low freq (inspiral start)</span>
+        <span>→ time →</span>
+        <span>High freq (merger + ringdown)</span>
+      </div>
+      <canvas id="specCanvas" height="110"></canvas>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle">FREQUENCY CHIRP CURVE</div>
+      <canvas id="chirpCanvas" height="100"></canvas>
+    </div>
+
+  </div>
+
+  <!-- Right: controls -->
+  <div style="display:flex;flex-direction:column;gap:10px;">
+
+    <div class="panel">
+      <div class="ptitle">Select Event</div>
+      <select id="eventSelect"></select>
+
+      <div class="btn-row">
+        <button class="btn play" id="playBtn" onclick="handlePlay()">▶ GENERATE &amp; PLAY</button>
+        <button class="btn stop" onclick="handleStop()">■ STOP</button>
+      </div>
+      <button class="btn dl" id="dlBtn" onclick="downloadWAV()" disabled style="width:100%;margin-bottom:8px;">
+        ⬇ DOWNLOAD .WAV
+      </button>
+
+      <div class="toggle-row">
+        <span class="toggle-label">Freq mode:</span>
+        <div class="toggle-wrap">
+          <button class="toggle-btn active" id="tPitch" onclick="setPitchMode('pitched')">Pitched</button>
+          <button class="toggle-btn" id="tTrue" onclick="setPitchMode('true')">True freq</button>
+        </div>
+      </div>
+      <div style="font-size:0.58rem;color:var(--sub);margin-bottom:8px;line-height:1.5;" id="pitchNote">
+        Pitch-shifted so f_ISCO → 800 Hz.<br>Preserves chirp shape &amp; ringdown character.
+      </div>
+
+      <div class="sl-row">
+        <span class="sl-lbl">Duration</span>
+        <input type="range" class="gold" id="durSlider" min="0.5" max="4.0" step="0.1" value="2.0">
+        <span class="sl-val" id="durVal">2.0 s</span>
+      </div>
+      <div class="sl-row">
+        <span class="sl-lbl">Volume</span>
+        <input type="range" id="volSlider" min="0.0" max="1.0" step="0.05" value="0.7">
+        <span class="sl-val" id="volVal">0.70</span>
+      </div>
+      <div class="sl-row">
+        <span class="sl-lbl">Ringdown</span>
+        <input type="range" class="grn" id="rdSlider" min="0.1" max="1.0" step="0.05" value="0.4">
+        <span class="sl-val" id="rdVal">0.40 s</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle">Event Parameters</div>
+      <div class="stat-row"><span class="sk">m₁</span><span class="sv gold" id="s_m1">—</span></div>
+      <div class="stat-row"><span class="sk">m₂</span><span class="sv gold" id="s_m2">—</span></div>
+      <div class="stat-row"><span class="sk">M_chirp</span><span class="sv" id="s_Mc">—</span></div>
+      <div class="stat-row"><span class="sk">χ_eff</span><span class="sv" id="s_chi">—</span></div>
+      <div class="stat-row"><span class="sk">f_ISCO (true)</span><span class="sv purple" id="s_fisco">—</span></div>
+      <div class="stat-row"><span class="sk">f_ISCO (audio)</span><span class="sv" id="s_faudio">—</span></div>
+      <div class="stat-row"><span class="sk">Pitch factor</span><span class="sv" id="s_pf">—</span></div>
+
+      <div class="phase-row">
+        <div class="ph idle" id="ph_ins">INSPIRAL</div>
+        <div class="ph idle" id="ph_mrg">MERGER</div>
+        <div class="ph idle" id="ph_rng">RINGDOWN</div>
+      </div>
+
+      <div class="n-box">
+        <div class="n-val" id="s_n">—</div>
+        <div class="n-sub">n_obs (Seraphim octave depth)</div>
+        <div style="font-size:0.62rem;margin-top:4px;" id="s_ndelta">—</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- wrap -->
+
+<script>
+// ================================================================
+// CONSTANTS
+// ================================================================
+const G=6.674e-11, CC=3e8, PI=Math.PI, MSUN=1.989e30;
+const SR=44100; // audio sample rate
+
+// ================================================================
+// EVENT DATA
+// ================================================================
+const EVENTS = [{"id":"GW230529_181500","cat":"GWTC-4","Mc":1.9392,"Mt":5.009,"m1":3.5537,"m2":1.4553,"q":0.4095,"eta":0.20612,"E_rad":0.1581,"chi":-0.1125,"z":0.0448,"Dl":204.7,"n":5.06672,"f_isco":879.46,"f_peak":1758.92,"tau_chirp_s":463.7,"rs_km":14.78,"r_isco_km":44.33,"n_theory":5.00633},{"id":"GW200115_042309","cat":"GWTC-3","Mc":2.4283,"Mt":7.2802,"m1":5.8246,"m2":1.4556,"q":0.2499,"eta":0.15996,"E_rad":0.1463,"chi":-0.1681,"z":0.0624,"Dl":288.3,"n":4.74116,"f_isco":605.09,"f_peak":1210.19,"tau_chirp_s":318.7,"rs_km":21.48,"r_isco_km":64.43,"n_theory":4.68265},{"id":"GW230518_125908","cat":"GWTC-4","Mc":2.7985,"Mt":9.6205,"m1":8.1758,"m2":1.4447,"q":0.1767,"eta":0.12762,"E_rad":0.1489,"chi":-0.0124,"z":0.0516,"Dl":236.7,"n":4.55237,"f_isco":457.9,"f_peak":915.8,"tau_chirp_s":251.6,"rs_km":28.38,"r_isco_km":85.14,"n_theory":4.45584},{"id":"GW200105_162426","cat":"GWTC-3","Mc":3.4166,"Mt":10.9488,"m1":9.0441,"m2":1.9047,"q":0.2106,"eta":0.1437,"E_rad":0.2044,"chi":0.0007,"z":0.0594,"Dl":274.0,"n":4.68825,"f_isco":402.35,"f_peak":804.69,"tau_chirp_s":180.4,"rs_km":32.3,"r_isco_km":96.89,"n_theory":4.56863},{"id":"GW190917_114630","cat":"GWTC-2.1","Mc":3.6721,"Mt":11.7631,"m1":9.7168,"m2":2.0463,"q":0.2106,"eta":0.1437,"E_rad":0.2122,"chi":-0.076,"z":0.1468,"Dl":717.7,"n":4.66192,"f_isco":374.49,"f_peak":748.99,"tau_chirp_s":160.0,"rs_km":34.7,"r_isco_km":104.1,"n_theory":4.56863},{"id":"GW230627_015337","cat":"GWTC-4","Mc":6.0146,"Mt":14.1812,"m1":8.3893,"m2":5.7919,"q":0.6904,"eta":0.24161,"E_rad":0.6472,"chi":0.021,"z":0.0663,"Dl":307.4,"n":5.33612,"f_isco":310.64,"f_peak":621.27,"tau_chirp_s":70.3,"rs_km":41.83,"r_isco_km":125.5,"n_theory":5.2552},{"id":"GW190924_021846","cat":"GWTC-2.1","Mc":5.7873,"Mt":14.2941,"m1":9.4701,"m2":4.824,"q":0.5094,"eta":0.22359,"E_rad":0.5731,"chi":0.0457,"z":0.1132,"Dl":541.6,"n":5.24274,"f_isco":308.18,"f_peak":616.37,"tau_chirp_s":75.0,"rs_km":42.17,"r_isco_km":126.5,"n_theory":5.12881},{"id":"GW231224_024321","cat":"GWTC-4","Mc":7.141,"Mt":16.6908,"m1":9.3632,"m2":7.3276,"q":0.7826,"eta":0.24628,"E_rad":0.7696,"chi":-0.0052,"z":0.1883,"Dl":943.9,"n":5.34818,"f_isco":263.93,"f_peak":527.86,"tau_chirp_s":52.8,"rs_km":49.24,"r_isco_km":147.71,"n_theory":5.28793},{"id":"GW230630_234532","cat":"GWTC-4","Mc":7.0704,"Mt":16.831,"m1":10.0598,"m2":6.7712,"q":0.6731,"eta":0.24046,"E_rad":0.7212,"chi":-0.0401,"z":0.2114,"Dl":1074.0,"n":5.30102,"f_isco":261.73,"f_peak":523.46,"tau_chirp_s":53.7,"rs_km":49.65,"r_isco_km":148.95,"n_theory":5.24708},{"id":"GW200202_154313","cat":"GWTC-3","Mc":7.4872,"Mt":17.5954,"m1":10.2717,"m2":7.3237,"q":0.713,"eta":0.24298,"E_rad":0.8094,"chi":0.0361,"z":0.0883,"Dl":415.3,"n":5.34629,"f_isco":250.36,"f_peak":500.72,"tau_chirp_s":48.8,"rs_km":51.9,"r_isco_km":155.71,"n_theory":5.26479},{"id":"GW191129_134029","cat":"GWTC-3","Mc":7.3222,"Mt":17.6754,"m1":11.054,"m2":6.6214,"q":0.599,"eta":0.23428,"E_rad":0.7712,"chi":0.0648,"z":0.1583,"Dl":779.6,"n":5.30979,"f_isco":249.23,"f_peak":498.46,"tau_chirp_s":50.6,"rs_km":52.14,"r_isco_km":156.42,"n_theory":5.20375},{"id":"GW230904_051013","cat":"GWTC-4","Mc":7.5525,"Mt":17.9681,"m1":10.76,"m2":7.2081,"q":0.6699,"eta":0.24023,"E_rad":0.8084,"chi":0.0562,"z":0.1997,"Dl":1007.5,"n":5.3394,"f_isco":245.17,"f_peak":490.34,"tau_chirp_s":48.1,"rs_km":53.0,"r_isco_km":159.01,"n_theory":5.2455},{"id":"GW230731_215307","cat":"GWTC-4","Mc":7.7653,"Mt":18.2391,"m1":10.3473,"m2":7.8918,"q":0.7627,"eta":0.24547,"E_rad":0.8132,"chi":-0.0479,"z":0.2182,"Dl":1113.0,"n":5.32736,"f_isco":241.53,"f_peak":483.05,"tau_chirp_s":45.9,"rs_km":53.8,"r_isco_km":161.41,"n_theory":5.28223},{"id":"GW190725_174728","cat":"GWTC-2.1","Mc":7.4493,"Mt":18.3061,"m1":11.9398,"m2":6.3663,"q":0.5332,"eta":0.22683,"E_rad":0.7078,"chi":-0.0389,"z":0.2028,"Dl":1025.4,"n":5.22384,"f_isco":240.64,"f_peak":481.28,"tau_chirp_s":49.2,"rs_km":54.0,"r_isco_km":162.0,"n_theory":5.1515},{"id":"GW191105_143521","cat":"GWTC-3","Mc":7.8058,"Mt":18.5278,"m1":10.9405,"m2":7.5873,"q":0.6935,"eta":0.24181,"E_rad":0.8102,"chi":-0.0184,"z":0.2262,"Dl":1158.7,"n":5.31461,"f_isco":237.76,"f_peak":475.52,"tau_chirp_s":45.5,"rs_km":54.66,"r_isco_km":163.97,"n_theory":5.25658},{"id":"GW170608_020116","cat":"GWTC-2.1","Mc":7.9352,"Mt":18.6246,"m1":10.8687,"m2":7.7559,"q":0.7136,"eta":0.24302,"E_rad":0.8639,"chi":0.0434,"z":0.0707,"Dl":328.9,"n":5.35116,"f_isco":236.53,"f_peak":473.05,"tau_chirp_s":44.3,"rs_km":54.94,"r_isco_km":164.82,"n_theory":5.26503},{"id":"GW231223_075055","cat":"GWTC-4","Mc":7.8136,"Mt":19.0328,"m1":12.181,"m2":6.8518,"q":0.5625,"eta":0.2304,"E_rad":0.8025,"chi":0.0721,"z":0.1914,"Dl":960.9,"n":5.29073,"f_isco":231.45,"f_peak":462.91,"tau_chirp_s":45.4,"rs_km":56.15,"r_isco_km":168.44,"n_theory":5.17656},{"id":"GW231018_233037","cat":"GWTC-4","Mc":7.911,"Mt":19.0923,"m1":11.7607,"m2":7.3316,"q":0.6234,"eta":0.23655,"E_rad":0.8141,"chi":0.0148,"z":0.2877,"Dl":1523.6,"n":5.2994,"f_isco":230.73,"f_peak":461.46,"tau_chirp_s":44.5,"rs_km":56.32,"r_isco_km":168.96,"n_theory":5.21966},{"id":"GW231113_200417","cat":"GWTC-4","Mc":8.021,"Mt":19.1418,"m1":11.5416,"m2":7.6002,"q":0.6585,"eta":0.2394,"E_rad":0.8909,"chi":0.1253,"z":0.224,"Dl":1146.2,"n":5.36529,"f_isco":230.14,"f_peak":460.27,"tau_chirp_s":43.5,"rs_km":56.47,"r_isco_km":169.4,"n_theory":5.23968},{"id":"GW231223_202619","cat":"GWTC-4","Mc":8.3771,"Mt":19.7013,"m1":11.2779,"m2":8.4234,"q":0.7469,"eta":0.24475,"E_rad":0.9437,"chi":0.105,"z":0.1776,"Dl":884.4,"n":5.37816,"f_isco":223.6,"f_peak":447.2,"tau_chirp_s":40.5,"rs_km":58.12,"r_isco_km":174.35,"n_theory":5.2772},{"id":"GW231020_142947","cat":"GWTC-4","Mc":8.0709,"Mt":19.8618,"m1":12.3588,"m2":7.503,"q":0.6071,"eta":0.23506,"E_rad":0.8828,"chi":0.1512,"z":0.2383,"Dl":1228.8,"n":5.34492,"f_isco":221.79,"f_peak":443.59,"tau_chirp_s":43.1,"rs_km":58.59,"r_isco_km":175.77,"n_theory":5.20922},{"id":"GW190707_093326","cat":"GWTC-2.1","Mc":8.5017,"Mt":20.0104,"m1":11.5982,"m2":8.4122,"q":0.7253,"eta":0.24366,"E_rad":0.8746,"chi":-0.0641,"z":0.1627,"Dl":802.9,"n":5.31089,"f_isco":220.15,"f_peak":440.29,"tau_chirp_s":39.5,"rs_km":59.03,"r_isco_km":177.09,"n_theory":5.26956},{"id":"GW191103_012549","cat":"GWTC-3","Mc":8.334,"Mt":20.0274,"m1":12.1261,"m2":7.9013,"q":0.6516,"eta":0.23888,"E_rad":0.9705,"chi":0.2157,"z":0.1972,"Dl":993.8,"n":5.39694,"f_isco":219.96,"f_peak":439.92,"tau_chirp_s":40.8,"rs_km":59.08,"r_isco_km":177.24,"n_theory":5.23599},{"id":"GW191216_213338","cat":"GWTC-3","Mc":8.336,"Mt":20.0659,"m1":12.6943,"m2":7.3716,"q":0.5807,"eta":0.23241,"E_rad":0.9028,"chi":0.1174,"z":0.0725,"Dl":337.7,"n":5.32467,"f_isco":219.54,"f_peak":439.07,"tau_chirp_s":40.8,"rs_km":59.19,"r_isco_km":177.58,"n_theory":5.19065},{"id":"GW191204_171526","cat":"GWTC-3","Mc":8.574,"Mt":20.3555,"m1":12.2675,"m2":8.088,"q":0.6593,"eta":0.23946,"E_rad":0.9915,"chi":0.1592,"z":0.1304,"Dl":631.1,"n":5.3872,"f_isco":216.41,"f_peak":432.83,"tau_chirp_s":38.9,"rs_km":60.05,"r_isco_km":180.14,"n_theory":5.24009},{"id":"GW230729_082317","cat":"GWTC-4","Mc":8.3462,"Mt":20.4058,"m1":12.6713,"m2":7.7345,"q":0.6104,"eta":0.23537,"E_rad":0.8954,"chi":0.1248,"z":0.305,"Dl":1629.1,"n":5.33432,"f_isco":215.88,"f_peak":431.76,"tau_chirp_s":40.7,"rs_km":60.2,"r_isco_km":180.59,"n_theory":5.2114},{"id":"GW190930_133541","cat":"GWTC-2.1","Mc":8.5128,"Mt":20.4197,"m1":12.5474,"m2":7.8723,"q":0.6274,"eta":0.23689,"E_rad":0.936,"chi":0.1472,"z":0.1555,"Dl":764.0,"n":5.34832,"f_isco":215.73,"f_peak":431.47,"tau_chirp_s":39.4,"rs_km":60.24,"r_isco_km":180.71,"n_theory":5.22211},{"id":"GW191126_115259","cat":"GWTC-3","Mc":8.6148,"Mt":20.5602,"m1":12.2215,"m2":8.3387,"q":0.6823,"eta":0.24108,"E_rad":1.0144,"chi":0.21,"z":0.3097,"Dl":1658.4,"n":5.40358,"f_isco":214.26,"f_peak":428.52,"tau_chirp_s":38.6,"rs_km":60.65,"r_isco_km":181.95,"n_theory":5.25148},{"id":"GW190728_064510","cat":"GWTC-2.1","Mc":8.6357,"Mt":20.9488,"m1":13.0799,"m2":7.8689,"q":0.6016,"eta":0.23453,"E_rad":0.9529,"chi":0.1402,"z":0.1761,"Dl":876.4,"n":5.34304,"f_isco":210.28,"f_peak":420.57,"tau_chirp_s":38.5,"rs_km":61.8,"r_isco_km":185.39,"n_theory":5.20553},{"id":"GW231104_133418","cat":"GWTC-4","Mc":8.8535,"Mt":21.0329,"m1":12.3331,"m2":8.6998,"q":0.7054,"eta":0.24254,"E_rad":1.0135,"chi":0.1455,"z":0.2781,"Dl":1465.2,"n":5.38814,"f_isco":209.44,"f_peak":418.89,"tau_chirp_s":36.9,"rs_km":62.05,"r_isco_km":186.14,"n_theory":5.26169},{"id":"GW231118_090602","cat":"GWTC-4","Mc":8.3699,"Mt":21.2289,"m1":14.2457,"m2":6.9832,"q":0.4902,"eta":0.22074,"E_rad":0.8481,"chi":0.1195,"z":0.262,"Dl":1369.0,"n":5.2588,"f_isco":207.51,"f_peak":415.02,"tau_chirp_s":40.5,"rs_km":62.62,"r_isco_km":187.87,"n_theory":5.10884},{"id":"GW151226_033853","cat":"GWTC-2.1","Mc":8.855,"Mt":21.6734,"m1":14.1879,"m2":7.4855,"q":0.5276,"eta":0.22609,"E_rad":0.985,"chi":0.2015,"z":0.0973,"Dl":460.5,"n":5.33401,"f_isco":203.25,"f_peak":406.51,"tau_chirp_s":36.9,"rs_km":63.93,"r_isco_km":191.8,"n_theory":5.14636},{"id":"GW200316_215756","cat":"GWTC-3","Mc":8.8087,"Mt":21.7761,"m1":14.3311,"m2":7.445,"q":0.5195,"eta":0.225,"E_rad":0.9245,"chi":0.1507,"z":0.2137,"Dl":1086.9,"n":5.2916,"f_isco":202.3,"f_peak":404.59,"tau_chirp_s":37.2,"rs_km":64.24,"r_isco_km":192.71,"n_theory":5.13871},{"id":"GW190720_000836","cat":"GWTC-2.1","Mc":8.9751,"Mt":21.7909,"m1":14.0188,"m2":7.7721,"q":0.5544,"eta":0.22946,"E_rad":0.9786,"chi":0.174,"z":0.1543,"Dl":757.5,"n":5.32899,"f_isco":202.16,"f_peak":404.32,"tau_chirp_s":36.1,"rs_km":64.28,"r_isco_km":192.84,"n_theory":5.16994},{"id":"GW190814_211039","cat":"GWTC-2.1","Mc":6.1078,"Mt":25.9061,"m1":23.3136,"m2":2.5925,"q":0.1112,"eta":0.09006,"E_rad":0.2419,"chi":0.0037,"z":0.0508,"Dl":232.7,"n":4.18884,"f_isco":170.05,"f_peak":340.09,"tau_chirp_s":68.5,"rs_km":76.42,"r_isco_km":229.26,"n_theory":4.19248},{"id":"GW200210_092254","cat":"GWTC-3","Mc":6.5609,"Mt":27.4557,"m1":24.6461,"m2":2.8096,"q":0.114,"eta":0.09186,"E_rad":0.2678,"chi":0.0346,"z":0.1873,"Dl":938.5,"n":4.22389,"f_isco":160.45,"f_peak":320.9,"tau_chirp_s":60.8,"rs_km":80.99,"r_isco_km":242.98,"n_theory":4.20513},{"id":"GW230723_101834","cat":"GWTC-4","Mc":11.4997,"Mt":27.7103,"m1":16.9203,"m2":10.79,"q":0.6377,"eta":0.23776,"E_rad":1.0864,"chi":-0.1589,"z":0.2912,"Dl":1544.5,"n":5.24808,"f_isco":158.97,"f_peak":317.95,"tau_chirp_s":23.9,"rs_km":81.74,"r_isco_km":245.23,"n_theory":5.22821},{"id":"GW230706_104333","cat":"GWTC-4","Mc":11.8191,"Mt":27.9525,"m1":16.3121,"m2":11.6404,"q":0.7136,"eta":0.24302,"E_rad":1.3998,"chi":0.1929,"z":0.3515,"Dl":1921.0,"n":5.40903,"f_isco":157.6,"f_peak":315.19,"tau_chirp_s":22.8,"rs_km":82.46,"r_isco_km":247.37,"n_theory":5.26503},{"id":"GW230605_065343","cat":"GWTC-4","Mc":12.0093,"Mt":28.7266,"m1":17.5098,"m2":11.2168,"q":0.6406,"eta":0.238,"E_rad":1.2754,"chi":0.0683,"z":0.2049,"Dl":1037.3,"n":5.32878,"f_isco":153.35,"f_peak":306.7,"tau_chirp_s":22.2,"rs_km":84.74,"r_isco_km":254.22,"n_theory":5.22987},{"id":"GW190708_232457","cat":"GWTC-2.1","Mc":13.0484,"Mt":30.7827,"m1":17.7832,"m2":12.9995,"q":0.731,"eta":0.24396,"E_rad":1.4003,"chi":0.0185,"z":0.186,"Dl":931.1,"n":5.34184,"f_isco":143.11,"f_peak":286.21,"tau_chirp_s":19.3,"rs_km":90.81,"r_isco_km":272.42,"n_theory":5.27167},{"id":"GW231114_043211","cat":"GWTC-4","Mc":11.6527,"Mt":31.5127,"m1":23.291,"m2":8.2217,"q":0.353,"eta":0.19283,"E_rad":0.9901,"chi":0.091,"z":0.2551,"Dl":1327.5,"n":5.07018,"f_isco":139.79,"f_peak":279.58,"tau_chirp_s":23.3,"rs_km":92.96,"r_isco_km":278.88,"n_theory":4.91314},{"id":"GW231118_005626","cat":"GWTC-4","Mc":12.7915,"Mt":31.8307,"m1":21.3457,"m2":10.485,"q":0.4912,"eta":0.2209,"E_rad":1.6097,"chi":0.3929,"z":0.3789,"Dl":2097.3,"n":5.41267,"f_isco":138.39,"f_peak":276.79,"tau_chirp_s":20.0,"rs_km":93.9,"r_isco_km":281.69,"n_theory":5.10992},{"id":"GW231110_040320","cat":"GWTC-4","Mc":13.4722,"Mt":32.5224,"m1":20.0483,"m2":12.4741,"q":0.6222,"eta":0.23644,"E_rad":1.5352,"chi":0.1746,"z":0.3393,"Dl":1843.5,"n":5.36967,"f_isco":135.45,"f_peak":270.9,"tau_chirp_s":18.3,"rs_km":95.94,"r_isco_km":287.81,"n_theory":5.21892},{"id":"GW191219_163120","cat":"GWTC-3","Mc":4.3328,"Mt":32.7632,"m1":31.5973,"m2":1.1659,"q":0.0369,"eta":0.03432,"E_rad":0.0859,"chi":0.0048,"z":0.1098,"Dl":524.0,"n":3.27208,"f_isco":134.46,"f_peak":268.91,"tau_chirp_s":121.4,"rs_km":96.65,"r_isco_km":289.95,"n_theory":3.80165},{"id":"GW200225_060421","cat":"GWTC-3","Mc":14.2479,"Mt":33.5639,"m1":19.4224,"m2":14.1415,"q":0.7281,"eta":0.24381,"E_rad":1.4197,"chi":-0.1381,"z":0.2138,"Dl":1087.9,"n":5.28042,"f_isco":131.25,"f_peak":262.5,"tau_chirp_s":16.7,"rs_km":99.01,"r_isco_km":297.03,"n_theory":5.2706},{"id":"GW190828_065509","cat":"GWTC-2.1","Mc":13.3918,"Mt":34.2533,"m1":23.7639,"m2":10.4894,"q":0.4414,"eta":0.21245,"E_rad":1.2489,"chi":0.0539,"z":0.2908,"Dl":1542.4,"n":5.17681,"f_isco":128.61,"f_peak":257.21,"tau_chirp_s":18.5,"rs_km":101.04,"r_isco_km":303.13,"n_theory":5.05072},{"id":"GW191113_071753","cat":"GWTC-3","Mc":10.7239,"Mt":35.573,"m1":29.8832,"m2":5.6898,"q":0.1904,"eta":0.13436,"E_rad":0.5951,"chi":0.0032,"z":0.2421,"Dl":1251.3,"n":4.60655,"f_isco":123.84,"f_peak":247.67,"tau_chirp_s":26.8,"rs_km":104.94,"r_isco_km":314.81,"n_theory":4.50316},{"id":"GW231014_040532","cat":"GWTC-4","Mc":15.0755,"Mt":35.8834,"m1":20.9086,"m2":14.9748,"q":0.7162,"eta":0.24316,"E_rad":1.7676,"chi":0.1813,"z":0.3994,"Dl":2231.1,"n":5.39642,"f_isco":122.76,"f_peak":245.53,"tau_chirp_s":15.2,"rs_km":105.85,"r_isco_km":317.56,"n_theory":5.26606},{"id":"GW190512_180714","cat":"GWTC-2.1","Mc":14.5313,"Mt":36.0873,"m1":23.8594,"m2":12.2279,"q":0.5125,"eta":0.22403,"E_rad":1.4288,"chi":0.0279,"z":0.2783,"Dl":1466.2,"n":5.23567,"f_isco":122.07,"f_peak":244.14,"tau_chirp_s":16.2,"rs_km":106.45,"r_isco_km":319.36,"n_theory":5.13189},{"id":"GW190925_232845","cat":"GWTC-2.1","Mc":15.6591,"Mt":36.8282,"m1":21.1498,"m2":15.6784,"q":0.7413,"eta":0.24448,"E_rad":1.7354,"chi":0.0811,"z":0.1819,"Dl":908.3,"n":5.36408,"f_isco":119.61,"f_peak":239.23,"tau_chirp_s":14.3,"rs_km":108.64,"r_isco_km":325.92,"n_theory":5.27531},{"id":"GW190412_053044","cat":"GWTC-2.1","Mc":13.3447,"Mt":38.4591,"m1":29.997,"m2":8.4621,"q":0.2821,"eta":0.17162,"E_rad":1.1386,"chi":0.247,"z":0.1416,"Dl":690.1,"n":5.02221,"f_isco":114.54,"f_peak":229.09,"tau_chirp_s":18.6,"rs_km":113.45,"r_isco_km":340.35,"n_theory":4.76438},{"id":"GW230927_153832","cat":"GWTC-4","Mc":16.4372,"Mt":38.5156,"m1":22.0821,"m2":16.4335,"q":0.7442,"eta":0.24462,"E_rad":1.808,"chi":0.0406,"z":0.2278,"Dl":1168.0,"n":5.35683,"f_isco":114.37,"f_peak":228.75,"tau_chirp_s":13.2,"rs_km":113.62,"r_isco_km":340.85,"n_theory":5.2763},{"id":"GW151012_095443","cat":"GWTC-2.1","Mc":15.6122,"Mt":38.844,"m1":25.2562,"m2":13.5878,"q":0.538,"eta":0.22744,"E_rad":1.5958,"chi":0.111,"z":0.1937,"Dl":974.1,"n":5.28375,"f_isco":113.41,"f_peak":226.82,"tau_chirp_s":14.3,"rs_km":114.59,"r_isco_km":343.76,"n_theory":5.15582},{"id":"GW231231_154016","cat":"GWTC-4","Mc":17.109,"Mt":40.0007,"m1":22.6556,"m2":17.3451,"q":0.7656,"eta":0.24559,"E_rad":1.805,"chi":-0.0286,"z":0.2087,"Dl":1058.4,"n":5.33127,"f_isco":110.13,"f_peak":220.26,"tau_chirp_s":12.3,"rs_km":118.0,"r_isco_km":354.0,"n_theory":5.2831},{"id":"GW231108_125142","cat":"GWTC-4","Mc":17.3451,"Mt":40.6547,"m1":23.1875,"m2":17.4672,"q":0.7533,"eta":0.24505,"E_rad":1.7885,"chi":-0.0763,"z":0.3717,"Dl":2050.7,"n":5.31068,"f_isco":108.36,"f_peak":216.71,"tau_chirp_s":12.0,"rs_km":119.93,"r_isco_km":359.78,"n_theory":5.27929},{"id":"GW230624_113103","cat":"GWTC-4","Mc":17.8958,"Mt":43.1645,"m1":26.5595,"m2":16.605,"q":0.6252,"eta":0.2367,"E_rad":1.9606,"chi":0.1367,"z":0.3477,"Dl":1896.9,"n":5.34544,"f_isco":102.06,"f_peak":204.11,"tau_chirp_s":11.4,"rs_km":127.33,"r_isco_km":381.99,"n_theory":5.22077},{"id":"GW191215_223052","cat":"GWTC-3","Mc":18.3077,"Mt":43.2039,"m1":24.7629,"m2":18.441,"q":0.7447,"eta":0.24465,"E_rad":1.8894,"chi":-0.0536,"z":0.3522,"Dl":1925.2,"n":5.30968,"f_isco":101.96,"f_peak":203.93,"tau_chirp_s":11.0,"rs_km":127.45,"r_isco_km":382.34,"n_theory":5.27646},{"id":"GW190408_181802","cat":"GWTC-2.1","Mc":18.4673,"Mt":43.496,"m1":25.0221,"m2":18.4739,"q":0.7383,"eta":0.24433,"E_rad":1.937,"chi":-0.0301,"z":0.2858,"Dl":1511.7,"n":5.3216,"f_isco":101.28,"f_peak":202.56,"tau_chirp_s":10.8,"rs_km":128.31,"r_isco_km":384.93,"n_theory":5.27427},{"id":"GW200306_093714","cat":"GWTC-3","Mc":17.4319,"Mt":43.7158,"m1":28.4404,"m2":15.2754,"q":0.5371,"eta":0.22733,"E_rad":2.0805,"chi":0.3102,"z":0.3787,"Dl":2095.9,"n":5.37642,"f_isco":100.77,"f_peak":201.54,"tau_chirp_s":11.9,"rs_km":128.96,"r_isco_km":386.87,"n_theory":5.15502},{"id":"GW230712_090405","cat":"GWTC-4","Mc":15.6934,"Mt":43.9833,"m1":31.2515,"m2":12.7318,"q":0.4074,"eta":0.20568,"E_rad":1.3218,"chi":-0.041,"z":0.3614,"Dl":1983.9,"n":5.08825,"f_isco":100.16,"f_peak":200.31,"tau_chirp_s":14.2,"rs_km":129.75,"r_isco_km":389.24,"n_theory":5.00321},{"id":"GW191204_110529","cat":"GWTC-3","Mc":19.726,"Mt":46.9785,"m1":27.2402,"m2":19.7383,"q":0.7246,"eta":0.24362,"E_rad":2.1087,"chi":0.0373,"z":0.3355,"Dl":1819.2,"n":5.33955,"f_isco":93.77,"f_peak":187.54,"tau_chirp_s":9.7,"rs_km":138.58,"r_isco_km":415.75,"n_theory":5.2693},{"id":"GW240109_050431","cat":"GWTC-4","Mc":19.7099,"Mt":47.299,"m1":29.2547,"m2":18.0443,"q":0.6168,"eta":0.23596,"E_rad":1.9242,"chi":-0.076,"z":0.2758,"Dl":1451.6,"n":5.25751,"f_isco":93.14,"f_peak":186.27,"tau_chirp_s":9.7,"rs_km":139.53,"r_isco_km":418.58,"n_theory":5.21553},{"id":"GW230919_215712","cat":"GWTC-4","Mc":21.1454,"Mt":49.316,"m1":27.4496,"m2":21.8664,"q":0.7966,"eta":0.2468,"E_rad":2.5408,"chi":0.1823,"z":0.2461,"Dl":1274.9,"n":5.42662,"f_isco":89.33,"f_peak":178.65,"tau_chirp_s":8.6,"rs_km":145.48,"r_isco_km":436.43,"n_theory":5.29153},{"id":"GW170104_101158","cat":"GWTC-2.1","Mc":21.1554,"Mt":49.9996,"m1":29.2652,"m2":20.7344,"q":0.7085,"eta":0.24272,"E_rad":2.1883,"chi":-0.0421,"z":0.2113,"Dl":1073.2,"n":5.30957,"f_isco":88.1,"f_peak":176.21,"tau_chirp_s":8.6,"rs_km":147.49,"r_isco_km":442.48,"n_theory":5.26297},{"id":"GW231005_091549","cat":"GWTC-4","Mc":21.4966,"Mt":50.6423,"m1":28.5727,"m2":22.0696,"q":0.7724,"eta":0.24588,"E_rad":2.2451,"chi":-0.0384,"z":0.5938,"Dl":3584.5,"n":5.32419,"f_isco":86.99,"f_peak":173.97,"tau_chirp_s":8.4,"rs_km":149.39,"r_isco_km":448.17,"n_theory":5.28509},{"id":"GW230924_124453","cat":"GWTC-4","Mc":22.2595,"Mt":51.7546,"m1":28.5621,"m2":23.1925,"q":0.812,"eta":0.24731,"E_rad":2.4568,"chi":0.0196,"z":0.4192,"Dl":2362.3,"n":5.36274,"f_isco":85.12,"f_peak":170.23,"tau_chirp_s":7.9,"rs_km":152.67,"r_isco_km":458.01,"n_theory":5.29513},{"id":"GW230708_053705","cat":"GWTC-4","Mc":22.2893,"Mt":51.9629,"m1":28.7421,"m2":23.2208,"q":0.8079,"eta":0.24718,"E_rad":2.5351,"chi":0.0773,"z":0.5478,"Dl":3252.0,"n":5.38341,"f_isco":84.78,"f_peak":169.55,"tau_chirp_s":7.9,"rs_km":153.29,"r_isco_km":459.86,"n_theory":5.29421},{"id":"GW230704_021211","cat":"GWTC-4","Mc":22.1032,"Mt":53.5414,"m1":33.3197,"m2":20.2217,"q":0.6069,"eta":0.23504,"E_rad":2.2308,"chi":-0.0139,"z":0.4506,"Dl":2573.9,"n":5.28083,"f_isco":82.28,"f_peak":164.55,"tau_chirp_s":8.0,"rs_km":157.94,"r_isco_km":473.83,"n_theory":5.20909},{"id":"GW190513_205428","cat":"GWTC-2.1","Mc":21.4743,"Mt":54.2525,"m1":36.7689,"m2":17.4836,"q":0.4755,"eta":0.21841,"E_rad":2.2115,"chi":0.1346,"z":0.3888,"Dl":2162.0,"n":5.26508,"f_isco":81.2,"f_peak":162.4,"tau_chirp_s":8.4,"rs_km":160.04,"r_isco_km":480.12,"n_theory":5.09249},{"id":"GW170814_103043","cat":"GWTC-2.1","Mc":23.9165,"Mt":55.6541,"m1":30.8111,"m2":24.843,"q":0.8063,"eta":0.24713,"E_rad":2.6913,"chi":0.0606,"z":0.1223,"Dl":588.4,"n":5.3787,"f_isco":79.15,"f_peak":158.31,"tau_chirp_s":7.0,"rs_km":164.17,"r_isco_km":492.52,"n_theory":5.29384},{"id":"GW230911_195324","cat":"GWTC-4","Mc":23.132,"Mt":56.1018,"m1":35.896,"m2":20.2058,"q":0.5629,"eta":0.23045,"E_rad":2.2948,"chi":-0.029,"z":0.221,"Dl":1128.7,"n":5.2574,"f_isco":78.52,"f_peak":157.04,"tau_chirp_s":7.4,"rs_km":165.5,"r_isco_km":496.49,"n_theory":5.17689},{"id":"GW230920_071124","cat":"GWTC-4","Mc":23.9582,"Mt":56.4734,"m1":32.1438,"m2":24.3296,"q":0.7569,"eta":0.24521,"E_rad":2.566,"chi":-0.0019,"z":0.4863,"Dl":2818.4,"n":5.33999,"f_isco":78.0,"f_peak":156.01,"tau_chirp_s":7.0,"rs_km":166.59,"r_isco_km":499.77,"n_theory":5.28044},{"id":"GW190915_235702","cat":"GWTC-2.1","Mc":24.1699,"Mt":56.6538,"m1":32.0331,"m2":24.6207,"q":0.7686,"eta":0.24572,"E_rad":2.5497,"chi":-0.0388,"z":0.3297,"Dl":1782.9,"n":5.32845,"f_isco":77.76,"f_peak":155.51,"tau_chirp_s":6.9,"rs_km":167.12,"r_isco_km":501.37,"n_theory":5.28399},{"id":"GW230805_034249","cat":"GWTC-4","Mc":23.3893,"Mt":56.729,"m1":34.6183,"m2":22.1107,"q":0.6387,"eta":0.23785,"E_rad":2.5216,"chi":0.082,"z":0.5329,"Dl":3145.4,"n":5.33312,"f_isco":77.65,"f_peak":155.31,"tau_chirp_s":7.3,"rs_km":167.35,"r_isco_km":502.04,"n_theory":5.22878},{"id":"GW190719_215514","cat":"GWTC-2.1","Mc":22.8107,"Mt":57.1791,"m1":36.7522,"m2":20.4269,"q":0.5558,"eta":0.22962,"E_rad":2.6056,"chi":0.25,"z":0.613,"Dl":3725.2,"n":5.36459,"f_isco":77.04,"f_peak":154.08,"tau_chirp_s":7.6,"rs_km":168.67,"r_isco_km":506.02,"n_theory":5.1711},{"id":"GW190828_063405","cat":"GWTC-2.1","Mc":24.5995,"Mt":57.2082,"m1":31.3745,"m2":25.8337,"q":0.8234,"eta":0.24765,"E_rad":2.9609,"chi":0.154,"z":0.3754,"Dl":2074.3,"n":5.4234,"f_isco":77.0,"f_peak":154.01,"tau_chirp_s":6.7,"rs_km":168.76,"r_isco_km":506.28,"n_theory":5.29756},{"id":"GW200302_015811","cat":"GWTC-3","Mc":22.9418,"Mt":57.445,"m1":38.564,"m2":18.881,"q":0.4896,"eta":0.22065,"E_rad":2.1711,"chi":-0.0012,"z":0.2708,"Dl":1421.5,"n":5.20189,"f_isco":76.69,"f_peak":153.37,"tau_chirp_s":7.5,"rs_km":169.46,"r_isco_km":508.37,"n_theory":5.10819},{"id":"GW230811_032116","cat":"GWTC-4","Mc":24.0645,"Mt":57.9945,"m1":35.8677,"m2":22.1268,"q":0.6169,"eta":0.23597,"E_rad":2.5198,"chi":0.0171,"z":0.3683,"Dl":2028.8,"n":5.30546,"f_isco":75.96,"f_peak":151.92,"tau_chirp_s":7.0,"rs_km":171.08,"r_isco_km":513.24,"n_theory":5.21559},{"id":"GW190413_052954","cat":"GWTC-2.1","Mc":24.543,"Mt":58.027,"m1":33.5494,"m2":24.4776,"q":0.7296,"eta":0.24389,"E_rad":2.5527,"chi":-0.0353,"z":0.5579,"Dl":3324.4,"n":5.31302,"f_isco":75.92,"f_peak":151.83,"tau_chirp_s":6.7,"rs_km":171.17,"r_isco_km":513.52,"n_theory":5.27115},{"id":"GW170809_082821","cat":"GWTC-2.1","Mc":24.7294,"Mt":58.4839,"m1":34.2733,"m2":24.2106,"q":0.7064,"eta":0.2426,"E_rad":2.7438,"chi":0.0795,"z":0.2147,"Dl":1092.5,"n":5.3614,"f_isco":75.32,"f_peak":150.65,"tau_chirp_s":6.7,"rs_km":172.52,"r_isco_km":517.57,"n_theory":5.2621},{"id":"GW230930_110730","cat":"GWTC-4","Mc":24.8918,"Mt":58.9969,"m1":33.916,"m2":25.0809,"q":0.7395,"eta":0.24439,"E_rad":2.6986,"chi":0.0277,"z":0.7619,"Dl":4856.9,"n":5.34391,"f_isco":74.67,"f_peak":149.34,"tau_chirp_s":6.6,"rs_km":174.04,"r_isco_km":522.11,"n_theory":5.27469},{"id":"GW230628_231200","cat":"GWTC-4","Mc":25.5232,"Mt":59.2169,"m1":32.0681,"m2":27.1488,"q":0.8466,"eta":0.24827,"E_rad":2.8096,"chi":-0.0023,"z":0.4077,"Dl":2286.2,"n":5.36053,"f_isco":74.39,"f_peak":148.78,"tau_chirp_s":6.3,"rs_km":174.68,"r_isco_km":524.05,"n_theory":5.3019},{"id":"GW190630_185205","cat":"GWTC-2.1","Mc":25.1591,"Mt":59.3298,"m1":34.454,"m2":24.8758,"q":0.722,"eta":0.24348,"E_rad":2.8099,"chi":0.0918,"z":0.1683,"Dl":833.5,"n":5.36844,"f_isco":74.25,"f_peak":148.5,"tau_chirp_s":6.5,"rs_km":175.02,"r_isco_km":525.05,"n_theory":5.26831},{"id":"GW190527_092055","cat":"GWTC-2.1","Mc":23.924,"Mt":59.5505,"m1":37.4296,"m2":22.1209,"q":0.591,"eta":0.23348,"E_rad":2.5557,"chi":0.0831,"z":0.4389,"Dl":2494.8,"n":5.31257,"f_isco":73.97,"f_peak":147.95,"tau_chirp_s":7.0,"rs_km":175.67,"r_isco_km":527.01,"n_theory":5.19815},{"id":"GW230609_064958","cat":"GWTC-4","Mc":25.3984,"Mt":59.9485,"m1":34.5784,"m2":25.3701,"q":0.7337,"eta":0.2441,"E_rad":2.5139,"chi":-0.1427,"z":0.5549,"Dl":3302.5,"n":5.27757,"f_isco":73.48,"f_peak":146.97,"tau_chirp_s":6.4,"rs_km":176.84,"r_isco_km":530.53,"n_theory":5.27264},{"id":"GW230702_185453","cat":"GWTC-4","Mc":23.0595,"Mt":60.8191,"m1":43.2138,"m2":17.6053,"q":0.4074,"eta":0.20568,"E_rad":2.0696,"chi":0.0587,"z":0.4143,"Dl":2329.5,"n":5.13827,"f_isco":72.43,"f_peak":144.86,"tau_chirp_s":7.5,"rs_km":179.41,"r_isco_km":538.23,"n_theory":5.00321},{"id":"GW200311_115853","cat":"GWTC-3","Mc":26.324,"Mt":61.4657,"m1":34.1818,"m2":27.2839,"q":0.7982,"eta":0.24685,"E_rad":2.8102,"chi":-0.0357,"z":0.2295,"Dl":1177.7,"n":5.33815,"f_isco":71.67,"f_peak":143.34,"tau_chirp_s":6.0,"rs_km":181.32,"r_isco_km":543.95,"n_theory":5.29192},{"id":"GW190926_050336","cat":"GWTC-2.1","Mc":24.2897,"Mt":61.6623,"m1":41.1493,"m2":20.513,"q":0.4985,"eta":0.222,"E_rad":2.2982,"chi":-0.0202,"z":0.5509,"Dl":3273.9,"n":5.20401,"f_isco":71.44,"f_peak":142.88,"tau_chirp_s":6.9,"rs_km":181.9,"r_isco_km":545.69,"n_theory":5.11766},{"id":"GW200209_085452","cat":"GWTC-3","Mc":26.3822,"Mt":61.831,"m1":34.7209,"m2":27.1101,"q":0.7808,"eta":0.24621,"E_rad":2.6603,"chi":-0.1248,"z":0.5695,"Dl":3408.0,"n":5.29456,"f_isco":71.25,"f_peak":142.49,"tau_chirp_s":6.0,"rs_km":182.4,"r_isco_km":547.19,"n_theory":5.28744},{"id":"GW230814_230901","cat":"GWTC-4","Mc":26.8681,"Mt":62.0258,"m1":33.5383,"m2":28.4875,"q":0.8494,"eta":0.24834,"E_rad":2.9359,"chi":-0.0103,"z":0.0594,"Dl":274.2,"n":5.35929,"f_isco":71.02,"f_peak":142.04,"tau_chirp_s":5.8,"rs_km":182.97,"r_isco_km":548.91,"n_theory":5.30238},{"id":"GW230927_043729","cat":"GWTC-4","Mc":26.7549,"Mt":62.4715,"m1":34.5987,"m2":27.8728,"q":0.8056,"eta":0.2471,"E_rad":2.923,"chi":0.0071,"z":0.5287,"Dl":3115.8,"n":5.35346,"f_isco":70.52,"f_peak":141.03,"tau_chirp_s":5.8,"rs_km":184.29,"r_isco_km":552.86,"n_theory":5.29368},{"id":"GW170818_022509","cat":"GWTC-2.1","Mc":26.8023,"Mt":62.4971,"m1":34.7824,"m2":27.7147,"q":0.7968,"eta":0.2468,"E_rad":2.8442,"chi":-0.0423,"z":0.222,"Dl":1134.5,"n":5.33413,"f_isco":70.49,"f_peak":140.97,"tau_chirp_s":5.8,"rs_km":184.36,"r_isco_km":553.08,"n_theory":5.29158},{"id":"GW231206_233134","cat":"GWTC-4","Mc":26.8967,"Mt":62.6127,"m1":34.5031,"m2":28.1096,"q":0.8147,"eta":0.24739,"E_rad":2.7995,"chi":-0.0901,"z":0.5452,"Dl":3233.5,"n":5.31779,"f_isco":70.36,"f_peak":140.71,"tau_chirp_s":5.8,"rs_km":184.7,"r_isco_km":554.11,"n_theory":5.29572},{"id":"GW231213_111417","cat":"GWTC-4","Mc":26.7593,"Mt":62.6177,"m1":34.8942,"m2":27.7235,"q":0.7945,"eta":0.24672,"E_rad":3.0451,"chi":0.0767,"z":0.6546,"Dl":4035.1,"n":5.3802,"f_isco":70.35,"f_peak":140.7,"tau_chirp_s":5.8,"rs_km":184.72,"r_isco_km":554.15,"n_theory":5.29101},{"id":"GW230606_004305","cat":"GWTC-4","Mc":26.327,"Mt":62.6625,"m1":36.5891,"m2":26.0734,"q":0.7126,"eta":0.24296,"E_rad":2.5837,"chi":-0.1361,"z":0.4674,"Dl":2688.5,"n":5.26705,"f_isco":70.3,"f_peak":140.6,"tau_chirp_s":6.0,"rs_km":184.85,"r_isco_km":554.55,"n_theory":5.26463},{"id":"GW200129_065458","cat":"GWTC-3","Mc":26.7175,"Mt":63.3266,"m1":36.7089,"m2":26.6177,"q":0.7251,"eta":0.24365,"E_rad":3.0627,"chi":0.1075,"z":0.1898,"Dl":952.1,"n":5.38485,"f_isco":69.56,"f_peak":139.13,"tau_chirp_s":5.9,"rs_km":186.81,"r_isco_km":560.42,"n_theory":5.26949},{"id":"GW200112_155838","cat":"GWTC-3","Mc":27.0358,"Mt":63.355,"m1":36.0443,"m2":27.3107,"q":0.7577,"eta":0.24525,"E_rad":2.9825,"chi":0.044,"z":0.2408,"Dl":1243.7,"n":5.3612,"f_isco":69.53,"f_peak":139.06,"tau_chirp_s":5.7,"rs_km":186.89,"r_isco_km":560.67,"n_theory":5.28069},{"id":"GW230726_002940","cat":"GWTC-4","Mc":27.1832,"Mt":63.3806,"m1":35.2173,"m2":28.1633,"q":0.7997,"eta":0.2469,"E_rad":2.9193,"chi":-0.0166,"z":0.3756,"Dl":2075.8,"n":5.343,"f_isco":69.5,"f_peak":139.01,"tau_chirp_s":5.7,"rs_km":186.97,"r_isco_km":560.9,"n_theory":5.29229},{"id":"GW150914_095045","cat":"GWTC-2.1","Mc":27.7459,"Mt":64.264,"m1":34.8069,"m2":29.4571,"q":0.8463,"eta":0.24827,"E_rad":2.9555,"chi":-0.0557,"z":0.0963,"Dl":455.6,"n":5.34021,"f_isco":68.55,"f_peak":137.1,"tau_chirp_s":5.5,"rs_km":189.57,"r_isco_km":568.72,"n_theory":5.30185},{"id":"GW190517_055101","cat":"GWTC-2.1","Mc":26.2694,"Mt":64.4896,"m1":41.1916,"m2":23.298,"q":0.5656,"eta":0.23075,"E_rad":3.7207,"chi":0.4417,"z":0.3014,"Dl":1607.4,"n":5.52228,"f_isco":68.31,"f_peak":136.62,"tau_chirp_s":6.0,"rs_km":190.24,"r_isco_km":570.72,"n_theory":5.17904},{"id":"GW200219_094415","cat":"GWTC-3","Mc":27.6031,"Mt":64.9328,"m1":36.9104,"m2":28.0224,"q":0.7592,"eta":0.24532,"E_rad":2.8047,"chi":-0.0968,"z":0.559,"Dl":3332.4,"n":5.29718,"f_isco":67.84,"f_peak":135.69,"tau_chirp_s":5.5,"rs_km":191.55,"r_isco_km":574.64,"n_theory":5.28116},{"id":"GW190803_022701","cat":"GWTC-2.1","Mc":27.5868,"Mt":65.0001,"m1":37.1387,"m2":27.8614,"q":0.7502,"eta":0.24491,"E_rad":2.9361,"chi":-0.0147,"z":0.5386,"Dl":3186.4,"n":5.33117,"f_isco":67.77,"f_peak":135.54,"tau_chirp_s":5.6,"rs_km":191.74,"r_isco_km":575.23,"n_theory":5.27829},{"id":"GW200208_130117","cat":"GWTC-3","Mc":27.534,"Mt":65.1014,"m1":37.7334,"m2":27.368,"q":0.7253,"eta":0.24366,"E_rad":2.7901,"chi":-0.0854,"z":0.3938,"Dl":2194.8,"n":5.29363,"f_isco":67.67,"f_peak":135.33,"tau_chirp_s":5.6,"rs_km":192.04,"r_isco_km":576.13,"n_theory":5.26956},{"id":"GW200220_124850","cat":"GWTC-3","Mc":27.9053,"Mt":65.742,"m1":37.6767,"m2":28.0653,"q":0.7449,"eta":0.24466,"E_rad":2.8582,"chi":-0.0741,"z":0.6696,"Dl":4147.5,"n":5.30262,"f_isco":67.01,"f_peak":134.01,"tau_chirp_s":5.4,"rs_km":193.93,"r_isco_km":581.8,"n_theory":5.27653},{"id":"GW231206_233901","cat":"GWTC-4","Mc":28.4168,"Mt":66.5665,"m1":37.5551,"m2":29.0114,"q":0.7725,"eta":0.24588,"E_rad":3.0305,"chi":-0.0293,"z":0.2811,"Dl":1483.1,"n":5.33666,"f_isco":66.18,"f_peak":132.35,"tau_chirp_s":5.3,"rs_km":196.37,"r_isco_km":589.1,"n_theory":5.28512},{"id":"GW170823_131358","cat":"GWTC-2.1","Mc":28.4833,"Mt":66.9488,"m1":37.9464,"m2":29.0024,"q":0.7643,"eta":0.24554,"E_rad":3.1661,"chi":0.0531,"z":0.3575,"Dl":1958.8,"n":5.36397,"f_isco":65.8,"f_peak":131.6,"tau_chirp_s":5.3,"rs_km":197.49,"r_isco_km":592.48,"n_theory":5.28271},{"id":"GW190916_200658","cat":"GWTC-2.1","Mc":26.9507,"Mt":68.0116,"m1":43.684,"m2":24.3276,"q":0.5569,"eta":0.22975,"E_rad":3.0057,"chi":0.1923,"z":0.7664,"Dl":4892.0,"n":5.34528,"f_isco":64.77,"f_peak":129.54,"tau_chirp_s":5.8,"rs_km":200.63,"r_isco_km":601.88,"n_theory":5.17201},{"id":"GW231113_122623","cat":"GWTC-4","Mc":28.4721,"Mt":68.2932,"m1":40.658,"m2":27.6352,"q":0.6797,"eta":0.24091,"E_rad":3.7981,"chi":0.3648,"z":0.5524,"Dl":3285.0,"n":5.49174,"f_isco":64.5,"f_peak":129.01,"tau_chirp_s":5.3,"rs_km":201.46,"r_isco_km":604.38,"n_theory":5.25026},{"id":"GW190727_060333","cat":"GWTC-2.1","Mc":29.308,"Mt":68.625,"m1":38.4282,"m2":30.1968,"q":0.7858,"eta":0.2464,"E_rad":3.3475,"chi":0.0839,"z":0.5146,"Dl":3016.4,"n":5.38124,"f_isco":64.19,"f_peak":128.38,"tau_chirp_s":5.0,"rs_km":202.44,"r_isco_km":607.31,"n_theory":5.28878},{"id":"GW190514_065416","cat":"GWTC-2.1","Mc":29.0832,"Mt":69.0248,"m1":40.1891,"m2":28.8357,"q":0.7175,"eta":0.24324,"E_rad":2.9075,"chi":-0.0911,"z":0.634,"Dl":3881.0,"n":5.28261,"f_isco":63.82,"f_peak":127.64,"tau_chirp_s":5.1,"rs_km":203.62,"r_isco_km":610.85,"n_theory":5.26657},{"id":"GW190731_140936","cat":"GWTC-2.1","Mc":29.1614,"Mt":69.3111,"m1":40.5874,"m2":28.7237,"q":0.7077,"eta":0.24268,"E_rad":3.192,"chi":0.0525,"z":0.5565,"Dl":3314.5,"n":5.34807,"f_isco":63.56,"f_peak":127.11,"tau_chirp_s":5.1,"rs_km":204.46,"r_isco_km":613.38,"n_theory":5.26264},{"id":"GW190503_185404","cat":"GWTC-2.1","Mc":29.2014,"Mt":69.4292,"m1":41.5644,"m2":27.8648,"q":0.6704,"eta":0.24027,"E_rad":2.9633,"chi":-0.0575,"z":0.2841,"Dl":1501.8,"n":5.28925,"f_isco":63.45,"f_peak":126.9,"tau_chirp_s":5.0,"rs_km":204.81,"r_isco_km":614.43,"n_theory":5.24575},{"id":"GW231129_081745","cat":"GWTC-4","Mc":28.1396,"Mt":69.5676,"m1":45.2914,"m2":24.2762,"q":0.536,"eta":0.22719,"E_rad":2.8323,"chi":0.0274,"z":0.5956,"Dl":3597.7,"n":5.26258,"f_isco":63.32,"f_peak":126.65,"tau_chirp_s":5.4,"rs_km":205.22,"r_isco_km":615.65,"n_theory":5.15403},{"id":"GW230922_020344","cat":"GWTC-4","Mc":29.9145,"Mt":70.6111,"m1":41.4993,"m2":29.1118,"q":0.7015,"eta":0.24231,"E_rad":3.2364,"chi":0.0354,"z":0.276,"Dl":1452.8,"n":5.3424,"f_isco":62.39,"f_peak":124.77,"tau_chirp_s":4.9,"rs_km":208.3,"r_isco_km":624.89,"n_theory":5.26005},{"id":"GW230825_041334","cat":"GWTC-4","Mc":29.4152,"Mt":70.6391,"m1":42.6307,"m2":28.0084,"q":0.657,"eta":0.23929,"E_rad":3.8211,"chi":0.3174,"z":0.7852,"Dl":5039.4,"n":5.46925,"f_isco":62.36,"f_peak":124.72,"tau_chirp_s":5.0,"rs_km":208.38,"r_isco_km":625.14,"n_theory":5.23889},{"id":"GW231008_142521","cat":"GWTC-4","Mc":28.9099,"Mt":71.2554,"m1":45.458,"m2":25.7974,"q":0.5675,"eta":0.23097,"E_rad":2.8375,"chi":-0.0252,"z":0.4817,"Dl":2786.8,"n":5.2545,"f_isco":61.82,"f_peak":123.65,"tau_chirp_s":5.1,"rs_km":210.2,"r_isco_km":630.59,"n_theory":5.18054},{"id":"GW200224_222234","cat":"GWTC-3","Mc":30.9151,"Mt":71.9586,"m1":39.9127,"m2":32.0459,"q":0.8029,"eta":0.24701,"E_rad":3.5876,"chi":0.1001,"z":0.3159,"Dl":1696.5,"n":5.39804,"f_isco":61.22,"f_peak":122.44,"tau_chirp_s":4.6,"rs_km":212.27,"r_isco_km":636.81,"n_theory":5.29305},{"id":"GW190421_213856","cat":"GWTC-2.1","Mc":31.3922,"Mt":73.6101,"m1":41.2914,"m2":32.3187,"q":0.7827,"eta":0.24629,"E_rad":3.2157,"chi":-0.0959,"z":0.4527,"Dl":2588.0,"n":5.30528,"f_isco":59.85,"f_peak":119.69,"tau_chirp_s":4.5,"rs_km":217.14,"r_isco_km":651.43,"n_theory":5.28795},{"id":"GW200128_022011","cat":"GWTC-3","Mc":31.5141,"Mt":73.7024,"m1":41.1401,"m2":32.5623,"q":0.7915,"eta":0.24661,"E_rad":3.5746,"chi":0.0797,"z":0.5396,"Dl":3193.1,"n":5.38211,"f_isco":59.77,"f_peak":119.54,"tau_chirp_s":4.4,"rs_km":217.42,"r_isco_km":652.25,"n_theory":5.29026},{"id":"GW230831_015414","cat":"GWTC-4","Mc":31.2302,"Mt":73.7716,"m1":42.2324,"m2":31.5392,"q":0.7468,"eta":0.24475,"E_rad":3.4121,"chi":0.0428,"z":0.7251,"Dl":4570.7,"n":5.35292,"f_isco":59.71,"f_peak":119.43,"tau_chirp_s":4.5,"rs_km":217.62,"r_isco_km":652.86,"n_theory":5.27717},{"id":"GW231118_071402","cat":"GWTC-4","Mc":31.1009,"Mt":73.8933,"m1":43.1141,"m2":30.7792,"q":0.7139,"eta":0.24303,"E_rad":3.5638,"chi":0.1278,"z":0.6598,"Dl":4073.9,"n":5.38126,"f_isco":59.62,"f_peak":119.23,"tau_chirp_s":4.5,"rs_km":217.98,"r_isco_km":653.94,"n_theory":5.26515},{"id":"GW231127_165300","cat":"GWTC-4","Mc":30.555,"Mt":74.4822,"m1":46.0278,"m2":28.4544,"q":0.6182,"eta":0.23608,"E_rad":3.2099,"chi":0.0406,"z":0.6912,"Dl":4311.6,"n":5.3059,"f_isco":59.14,"f_peak":118.29,"tau_chirp_s":4.7,"rs_km":219.72,"r_isco_km":659.15,"n_theory":5.21641},{"id":"GW230709_122727","cat":"GWTC-4","Mc":31.417,"Mt":75.14,"m1":44.2703,"m2":30.8697,"q":0.6973,"eta":0.24205,"E_rad":3.5176,"chi":0.0945,"z":0.7276,"Dl":4590.1,"n":5.35399,"f_isco":58.63,"f_peak":117.25,"tau_chirp_s":4.5,"rs_km":221.66,"r_isco_km":664.97,"n_theory":5.25824},{"id":"GW231226_101520","cat":"GWTC-4","Mc":32.5575,"Mt":75.1941,"m1":40.0395,"m2":35.1546,"q":0.878,"eta":0.24894,"E_rad":3.4588,"chi":-0.0738,"z":0.2278,"Dl":1168.2,"n":5.33903,"f_isco":58.58,"f_peak":117.17,"tau_chirp_s":4.2,"rs_km":221.82,"r_isco_km":665.45,"n_theory":5.3066},{"id":"GW240104_164932","cat":"GWTC-4","Mc":32.1979,"Mt":75.2684,"m1":42.3213,"m2":32.9471,"q":0.7785,"eta":0.24612,"E_rad":3.7528,"chi":0.1255,"z":0.3506,"Dl":1915.1,"n":5.3988,"f_isco":58.53,"f_peak":117.05,"tau_chirp_s":4.3,"rs_km":222.03,"r_isco_km":666.1,"n_theory":5.28681},{"id":"GW190805_211137","cat":"GWTC-2.1","Mc":31.345,"Mt":75.4035,"m1":44.7897,"m2":30.6138,"q":0.6835,"eta":0.24116,"E_rad":4.3261,"chi":0.3868,"z":0.933,"Dl":6229.6,"n":5.49988,"f_isco":58.42,"f_peak":116.84,"tau_chirp_s":4.5,"rs_km":222.43,"r_isco_km":667.3,"n_theory":5.25204},{"id":"GW230803_033412","cat":"GWTC-4","Mc":31.3469,"Mt":76.1055,"m1":47.4651,"m2":28.6404,"q":0.6034,"eta":0.2347,"E_rad":3.393,"chi":0.099,"z":0.7328,"Dl":4630.5,"n":5.33383,"f_isco":57.88,"f_peak":115.77,"tau_chirp_s":4.5,"rs_km":224.5,"r_isco_km":673.51,"n_theory":5.20675},{"id":"GW200322_091133","cat":"GWTC-3","Mc":25.288,"Mt":76.6638,"m1":59.0357,"m2":17.6281,"q":0.2986,"eta":0.17707,"E_rad":1.6132,"chi":0.1008,"z":0.8231,"Dl":5339.1,"n":5.02619,"f_isco":57.46,"f_peak":114.92,"tau_chirp_s":6.4,"rs_km":226.15,"r_isco_km":678.45,"n_theory":4.8026},{"id":"GW190910_112807","cat":"GWTC-2.1","Mc":32.8815,"Mt":76.692,"m1":43.0346,"m2":33.6574,"q":0.7821,"eta":0.24626,"E_rad":3.5466,"chi":-0.0112,"z":0.3076,"Dl":1645.2,"n":5.3467,"f_isco":57.44,"f_peak":114.88,"tau_chirp_s":4.1,"rs_km":226.23,"r_isco_km":678.7,"n_theory":5.28779},{"id":"GW231221_135041","cat":"GWTC-4","Mc":31.2259,"Mt":77.258,"m1":47.097,"m2":30.161,"q":0.6404,"eta":0.23799,"E_rad":3.2714,"chi":0.0393,"z":0.7017,"Dl":4391.7,"n":5.29857,"f_isco":57.02,"f_peak":114.04,"tau_chirp_s":4.5,"rs_km":227.9,"r_isco_km":683.71,"n_theory":5.22976},{"id":"GW190521_074359","cat":"GWTC-2.1","Mc":33.2282,"Mt":77.3377,"m1":43.8373,"m2":33.5004,"q":0.7642,"eta":0.24553,"E_rad":3.7393,"chi":0.0739,"z":0.1798,"Dl":896.7,"n":5.37619,"f_isco":56.96,"f_peak":113.92,"tau_chirp_s":4.1,"rs_km":228.14,"r_isco_km":684.42,"n_theory":5.28268},{"id":"GW231223_032836","cat":"GWTC-4","Mc":32.3248,"Mt":77.5766,"m1":45.6494,"m2":31.9272,"q":0.6994,"eta":0.24218,"E_rad":3.0752,"chi":-0.1616,"z":0.6415,"Dl":3936.5,"n":5.23942,"f_isco":56.79,"f_peak":113.57,"tau_chirp_s":4.3,"rs_km":228.84,"r_isco_km":686.53,"n_theory":5.25915},{"id":"GW230608_205047","cat":"GWTC-4","Mc":32.7478,"Mt":78.8106,"m1":48.1934,"m2":30.6172,"q":0.6353,"eta":0.23757,"E_rad":3.5123,"chi":0.0498,"z":0.5668,"Dl":3388.5,"n":5.32309,"f_isco":55.9,"f_peak":111.79,"tau_chirp_s":4.2,"rs_km":232.48,"r_isco_km":697.45,"n_theory":5.22681},{"id":"GW191222_033537","cat":"GWTC-3","Mc":33.965,"Mt":79.5141,"m1":44.5707,"m2":34.9434,"q":0.784,"eta":0.24634,"E_rad":3.5545,"chi":-0.0543,"z":0.4857,"Dl":2814.3,"n":5.32087,"f_isco":55.4,"f_peak":110.8,"tau_chirp_s":3.9,"rs_km":234.56,"r_isco_km":703.68,"n_theory":5.2883},{"id":"GW200216_220804","cat":"GWTC-3","Mc":32.6391,"Mt":80.9417,"m1":50.9997,"m2":29.942,"q":0.5871,"eta":0.23308,"E_rad":3.442,"chi":0.0805,"z":0.6303,"Dl":3853.5,"n":5.29996,"f_isco":54.42,"f_peak":108.85,"tau_chirp_s":4.2,"rs_km":238.77,"r_isco_km":716.31,"n_theory":5.19535},{"id":"GW190413_134308","cat":"GWTC-2.1","Mc":33.2992,"Mt":81.2511,"m1":50.8232,"m2":30.4279,"q":0.5987,"eta":0.23425,"E_rad":3.3686,"chi":-0.0085,"z":0.6226,"Dl":3796.3,"n":5.27378,"f_isco":54.22,"f_peak":108.43,"tau_chirp_s":4.1,"rs_km":239.68,"r_isco_km":719.05,"n_theory":5.20354},{"id":"GW230707_124047","cat":"GWTC-4","Mc":34.9673,"Mt":81.4944,"m1":44.9401,"m2":36.5543,"q":0.8134,"eta":0.24735,"E_rad":3.7254,"chi":-0.0435,"z":0.7189,"Dl":4523.4,"n":5.33282,"f_isco":54.06,"f_peak":108.11,"tau_chirp_s":3.7,"rs_km":240.4,"r_isco_km":721.2,"n_theory":5.29544},{"id":"GW231119_075248","cat":"GWTC-4","Mc":34.5356,"Mt":82.3292,"m1":47.5891,"m2":34.7401,"q":0.73,"eta":0.24391,"E_rad":3.641,"chi":-0.0005,"z":0.9702,"Dl":6537.5,"n":5.32677,"f_isco":53.51,"f_peak":107.01,"tau_chirp_s":3.8,"rs_km":242.86,"r_isco_km":728.59,"n_theory":5.2713},{"id":"GW170729_185629","cat":"GWTC-2.1","Mc":34.1478,"Mt":83.5641,"m1":53.8637,"m2":29.7004,"q":0.5514,"eta":0.2291,"E_rad":4.1373,"chi":0.2572,"z":0.4267,"Dl":2412.5,"n":5.39349,"f_isco":52.72,"f_peak":105.43,"tau_chirp_s":3.9,"rs_km":246.51,"r_isco_km":739.52,"n_theory":5.16743},{"id":"GW191127_050227","cat":"GWTC-3","Mc":30.0956,"Mt":84.7759,"m1":62.8622,"m2":21.9137,"q":0.3486,"eta":0.19167,"E_rad":2.7668,"chi":0.1768,"z":0.5701,"Dl":3412.0,"n":5.13705,"f_isco":51.96,"f_peak":103.93,"tau_chirp_s":4.8,"rs_km":250.08,"r_isco_km":750.24,"n_theory":4.90501},{"id":"GW191230_180458","cat":"GWTC-3","Mc":36.2191,"Mt":85.1422,"m1":48.1819,"m2":36.9603,"q":0.7671,"eta":0.24566,"E_rad":3.7761,"chi":-0.0586,"z":0.681,"Dl":4233.6,"n":5.31551,"f_isco":51.74,"f_peak":103.48,"tau_chirp_s":3.5,"rs_km":251.16,"r_isco_km":753.48,"n_theory":5.28355},{"id":"GW230806_204041","cat":"GWTC-4","Mc":35.8118,"Mt":85.1538,"m1":49.7481,"m2":35.4057,"q":0.7117,"eta":0.24291,"E_rad":4.0288,"chi":0.0929,"z":0.8451,"Dl":5515.4,"n":5.36235,"f_isco":51.73,"f_peak":103.46,"tau_chirp_s":3.6,"rs_km":251.2,"r_isco_km":753.59,"n_theory":5.26427},{"id":"GW230630_125806","cat":"GWTC-4","Mc":35.4041,"Mt":85.6976,"m1":51.8971,"m2":33.8005,"q":0.6513,"eta":0.23885,"E_rad":4.1568,"chi":0.2026,"z":0.8132,"Dl":5260.4,"n":5.39309,"f_isco":51.4,"f_peak":102.81,"tau_chirp_s":3.7,"rs_km":252.8,"r_isco_km":758.4,"n_theory":5.23583},{"id":"GW230928_215827","cat":"GWTC-4","Mc":35.7239,"Mt":87.6395,"m1":56.6403,"m2":30.9992,"q":0.5473,"eta":0.2286,"E_rad":4.9588,"chi":0.4204,"z":0.6974,"Dl":4358.9,"n":5.50055,"f_isco":50.27,"f_peak":100.53,"tau_chirp_s":3.6,"rs_km":258.53,"r_isco_km":775.59,"n_theory":5.16394},{"id":"GW231230_170116","cat":"GWTC-4","Mc":36.7309,"Mt":87.7908,"m1":51.5688,"m2":36.222,"q":0.7024,"eta":0.24236,"E_rad":3.4059,"chi":-0.2167,"z":0.8681,"Dl":5700.2,"n":5.22865,"f_isco":50.18,"f_peak":100.36,"tau_chirp_s":3.4,"rs_km":258.97,"r_isco_km":776.92,"n_theory":5.26043},{"id":"GW230824_033047","cat":"GWTC-4","Mc":36.9874,"Mt":88.244,"m1":52.1598,"m2":36.0842,"q":0.6918,"eta":0.2417,"E_rad":3.9271,"chi":0.0022,"z":0.7316,"Dl":4621.3,"n":5.32303,"f_isco":49.92,"f_peak":99.84,"tau_chirp_s":3.4,"rs_km":260.31,"r_isco_km":780.94,"n_theory":5.25582},{"id":"GW240107_013215","cat":"GWTC-4","Mc":34.6195,"Mt":89.5545,"m1":59.7707,"m2":29.7838,"q":0.4983,"eta":0.22197,"E_rad":4.2125,"chi":0.3387,"z":0.8746,"Dl":5752.8,"n":5.36986,"f_isco":49.19,"f_peak":98.38,"tau_chirp_s":3.8,"rs_km":264.18,"r_isco_km":792.53,"n_theory":5.11745},{"id":"GW190620_030421","cat":"GWTC-2.1","Mc":36.5329,"Mt":90.6749,"m1":58.7121,"m2":31.9628,"q":0.5444,"eta":0.22824,"E_rad":4.5068,"chi":0.3065,"z":0.513,"Dl":3004.8,"n":5.40505,"f_isco":48.58,"f_peak":97.16,"tau_chirp_s":3.5,"rs_km":267.48,"r_isco_km":802.45,"n_theory":5.16144},{"id":"GW200208_222617","cat":"GWTC-3","Mc":23.2195,"Mt":90.7246,"m1":79.3602,"m2":11.3644,"q":0.1432,"eta":0.10957,"E_rad":2.1201,"chi":0.6237,"z":0.6897,"Dl":4300.1,"n":4.89223,"f_isco":48.56,"f_peak":97.11,"tau_chirp_s":7.4,"rs_km":267.63,"r_isco_km":802.89,"n_theory":4.32932},{"id":"GW190929_012149","cat":"GWTC-2.1","Mc":35.5546,"Mt":93.3076,"m1":66.4868,"m2":26.8208,"q":0.4034,"eta":0.20482,"E_rad":3.0524,"chi":-0.0306,"z":0.5306,"Dl":3129.2,"n":5.09583,"f_isco":47.21,"f_peak":94.42,"tau_chirp_s":3.6,"rs_km":275.25,"r_isco_km":825.75,"n_theory":4.9972},{"id":"GW190701_203306","cat":"GWTC-2.1","Mc":39.9011,"Mt":93.6781,"m1":53.3991,"m2":40.279,"q":0.7543,"eta":0.2451,"E_rad":4.0455,"chi":-0.097,"z":0.38,"Dl":2104.2,"n":5.29592,"f_isco":47.02,"f_peak":94.05,"tau_chirp_s":3.0,"rs_km":276.34,"r_isco_km":829.03,"n_theory":5.27961},{"id":"GW230914_111401","cat":"GWTC-4","Mc":39.877,"Mt":95.8127,"m1":59.6741,"m2":36.1386,"q":0.6056,"eta":0.23492,"E_rad":4.4243,"chi":0.1275,"z":0.4526,"Dl":2587.6,"n":5.3382,"f_isco":45.98,"f_peak":91.95,"tau_chirp_s":3.0,"rs_km":282.64,"r_isco_km":847.92,"n_theory":5.20823},{"id":"GW230820_212515","cat":"GWTC-4","Mc":37.5026,"Mt":96.1931,"m1":64.3734,"m2":31.8197,"q":0.4943,"eta":0.22137,"E_rad":4.171,"chi":0.2093,"z":0.6195,"Dl":3773.1,"n":5.31551,"f_isco":45.8,"f_peak":91.59,"tau_chirp_s":3.3,"rs_km":283.76,"r_isco_km":851.28,"n_theory":5.11323},{"id":"GW231004_232346","cat":"GWTC-4","Mc":40.7,"Mt":101.6706,"m1":67.1758,"m2":34.4948,"q":0.5135,"eta":0.22417,"E_rad":3.803,"chi":-0.0512,"z":0.6567,"Dl":4050.2,"n":5.20104,"f_isco":43.33,"f_peak":86.66,"tau_chirp_s":2.9,"rs_km":299.92,"r_isco_km":899.76,"n_theory":5.13287},{"id":"GW200308_173609","cat":"GWTC-3","Mc":36.8081,"Mt":102.5327,"m1":76.0008,"m2":26.5319,"q":0.3491,"eta":0.19181,"E_rad":3.2346,"chi":0.127,"z":1.0054,"Dl":6831.0,"n":5.18548,"f_isco":42.96,"f_peak":85.93,"tau_chirp_s":3.4,"rs_km":302.46,"r_isco_km":907.39,"n_theory":4.90594},{"id":"GW190519_153544","cat":"GWTC-2.1","Mc":43.2107,"Mt":103.1949,"m1":63.372,"m2":39.8229,"q":0.6284,"eta":0.23698,"E_rad":5.4563,"chi":0.3153,"z":0.4529,"Dl":2589.4,"n":5.43856,"f_isco":42.69,"f_peak":85.38,"tau_chirp_s":2.6,"rs_km":304.42,"r_isco_km":913.25,"n_theory":5.22271},{"id":"GW230708_230935","cat":"GWTC-4","Mc":42.7697,"Mt":103.7964,"m1":64.9052,"m2":38.8912,"q":0.5992,"eta":0.2343,"E_rad":4.4348,"chi":0.0243,"z":0.5634,"Dl":3363.7,"n":5.29109,"f_isco":42.44,"f_peak":84.88,"tau_chirp_s":2.7,"rs_km":306.19,"r_isco_km":918.57,"n_theory":5.20389},{"id":"GW231102_071736","cat":"GWTC-4","Mc":44.4813,"Mt":104.652,"m1":61.3831,"m2":43.2689,"q":0.7049,"eta":0.24251,"E_rad":4.9825,"chi":0.074,"z":0.5985,"Dl":3618.9,"n":5.36365,"f_isco":42.09,"f_peak":84.19,"tau_chirp_s":2.5,"rs_km":308.71,"r_isco_km":926.14,"n_theory":5.26148},{"id":"GW231029_111508","cat":"GWTC-4","Mc":44.0481,"Mt":106.0689,"m1":65.3496,"m2":40.7193,"q":0.6231,"eta":0.23652,"E_rad":4.9773,"chi":0.1453,"z":0.5145,"Dl":3015.5,"n":5.3563,"f_isco":41.53,"f_peak":83.06,"tau_chirp_s":2.5,"rs_km":312.89,"r_isco_km":938.68,"n_theory":5.21948},{"id":"GW190403_051519","cat":"GWTC-2.1","Mc":32.65,"Mt":107.1354,"m1":89.0939,"m2":18.0415,"q":0.2025,"eta":0.14004,"E_rad":4.0894,"chi":0.6786,"z":1.1374,"Dl":7954.7,"n":5.21412,"f_isco":41.12,"f_peak":82.24,"tau_chirp_s":4.2,"rs_km":316.04,"r_isco_km":948.12,"n_theory":4.54297},{"id":"GW230601_224134","cat":"GWTC-4","Mc":45.732,"Mt":108.7076,"m1":64.8381,"m2":43.8695,"q":0.6766,"eta":0.2407,"E_rad":4.7431,"chi":-0.0201,"z":0.5716,"Dl":3423.2,"n":5.30291,"f_isco":40.52,"f_peak":81.05,"tau_chirp_s":2.4,"rs_km":320.68,"r_isco_km":962.03,"n_theory":5.24878},{"id":"GW230819_171910","cat":"GWTC-4","Mc":42.6385,"Mt":110.4179,"m1":75.9303,"m2":34.4876,"q":0.4542,"eta":0.21478,"E_rad":3.7854,"chi":-0.0291,"z":0.6318,"Dl":3864.8,"n":5.14492,"f_isco":39.9,"f_peak":79.79,"tau_chirp_s":2.7,"rs_km":325.72,"r_isco_km":977.17,"n_theory":5.06705},{"id":"GW191109_010717","cat":"GWTC-3","Mc":47.3964,"Mt":111.363,"m1":64.3159,"m2":47.0471,"q":0.7315,"eta":0.24399,"E_rad":4.2706,"chi":-0.3112,"z":0.2197,"Dl":1121.4,"n":5.21659,"f_isco":39.56,"f_peak":79.11,"tau_chirp_s":2.3,"rs_km":328.51,"r_isco_km":985.53,"n_theory":5.27185},{"id":"GW230814_061920","cat":"GWTC-4","Mc":46.7224,"Mt":112.1141,"m1":69.2447,"m2":42.8694,"q":0.6191,"eta":0.23616,"E_rad":4.9873,"chi":0.0529,"z":0.6196,"Dl":3774.1,"n":5.31581,"f_isco":39.29,"f_peak":78.58,"tau_chirp_s":2.3,"rs_km":330.73,"r_isco_km":992.18,"n_theory":5.21698},{"id":"GW190706_222641","cat":"GWTC-2.1","Mc":45.1876,"Mt":112.6867,"m1":74.3758,"m2":38.3109,"q":0.5151,"eta":0.22439,"E_rad":5.3952,"chi":0.2845,"z":0.5847,"Dl":3518.1,"n":5.36764,"f_isco":39.09,"f_peak":78.18,"tau_chirp_s":2.4,"rs_km":332.42,"r_isco_km":997.25,"n_theory":5.13444},{"id":"GW190602_175927","cat":"GWTC-2.1","Mc":48.0285,"Mt":115.6461,"m1":70.8616,"m2":44.7845,"q":0.632,"eta":0.23729,"E_rad":5.3309,"chi":0.1159,"z":0.4895,"Dl":2840.9,"n":5.34089,"f_isco":38.09,"f_peak":76.18,"tau_chirp_s":2.2,"rs_km":341.15,"r_isco_km":1023.44,"n_theory":5.22487},{"id":"GW231001_140220","cat":"GWTC-4","Mc":46.7561,"Mt":116.328,"m1":76.5165,"m2":39.8115,"q":0.5203,"eta":0.22511,"E_rad":4.4421,"chi":-0.0479,"z":0.673,"Dl":4173.3,"n":5.20979,"f_isco":37.87,"f_peak":75.74,"tau_chirp_s":2.3,"rs_km":343.16,"r_isco_km":1029.47,"n_theory":5.13947},{"id":"GW230922_040658","cat":"GWTC-4","Mc":50.9305,"Mt":124.6904,"m1":75.4602,"m2":49.2302,"q":0.6524,"eta":0.23894,"E_rad":6.6226,"chi":0.3378,"z":0.9495,"Dl":6365.5,"n":5.44574,"f_isco":35.33,"f_peak":70.66,"tau_chirp_s":2.0,"rs_km":367.83,"r_isco_km":1103.48,"n_theory":5.23643},{"id":"GW231005_021030","cat":"GWTC-4","Mc":53.4136,"Mt":131.5903,"m1":83.454,"m2":48.1363,"q":0.5768,"eta":0.23199,"E_rad":5.8031,"chi":0.1123,"z":0.939,"Dl":6278.9,"n":5.31799,"f_isco":33.48,"f_peak":66.95,"tau_chirp_s":1.8,"rs_km":388.18,"r_isco_km":1164.54,"n_theory":5.18772},{"id":"GW230704_212616","cat":"GWTC-4","Mc":54.7449,"Mt":141.5987,"m1":94.7022,"m2":46.8965,"q":0.4952,"eta":0.2215,"E_rad":6.7463,"chi":0.3772,"z":1.0016,"Dl":6799.7,"n":5.38275,"f_isco":31.11,"f_peak":62.22,"tau_chirp_s":1.8,"rs_km":417.7,"r_isco_km":1253.11,"n_theory":5.11419},{"id":"GW200220_061928","cat":"GWTC-3","Mc":60.2499,"Mt":144.1972,"m1":83.7674,"m2":60.4298,"q":0.7214,"eta":0.24345,"E_rad":6.4727,"chi":0.0373,"z":0.9314,"Dl":6217.0,"n":5.33279,"f_isco":30.55,"f_peak":61.1,"tau_chirp_s":1.5,"rs_km":425.37,"r_isco_km":1276.11,"n_theory":5.26808},{"id":"GW231028_153006","cat":"GWTC-4","Mc":64.299,"Mt":152.9012,"m1":89.9525,"m2":62.9487,"q":0.6998,"eta":0.2422,"E_rad":9.8729,"chi":0.4957,"z":0.7177,"Dl":4514.4,"n":5.5859,"f_isco":28.81,"f_peak":57.62,"tau_chirp_s":1.4,"rs_km":451.04,"r_isco_km":1353.13,"n_theory":5.25932},{"id":"GW190521_030229","cat":"GWTC-2.1","Mc":63.2916,"Mt":153.1475,"m1":96.4952,"m2":56.6523,"q":0.5871,"eta":0.23308,"E_rad":5.9105,"chi":-0.1398,"z":0.556,"Dl":3310.9,"n":5.20654,"f_isco":28.76,"f_peak":57.53,"tau_chirp_s":1.4,"rs_km":451.77,"r_isco_km":1355.31,"n_theory":5.19535},{"id":"GW190426_190642","cat":"GWTC-2.1","Mc":75.9944,"Mt":182.3339,"m1":103.5047,"m2":78.8292,"q":0.7616,"eta":0.24542,"E_rad":9.2968,"chi":0.2261,"z":0.7259,"Dl":4577.2,"n":5.41821,"f_isco":24.16,"f_peak":48.32,"tau_chirp_s":1.0,"rs_km":537.87,"r_isco_km":1613.6,"n_theory":5.28189},{"id":"GW231123_135430","cat":"GWTC-4","Mc":102.3297,"Mt":243.2756,"m1":149.9665,"m2":93.3091,"q":0.6222,"eta":0.23644,"E_rad":10.5362,"chi":0.0391,"z":0.1712,"Dl":849.5,"n":5.29566,"f_isco":18.11,"f_peak":36.22,"tau_chirp_s":0.6,"rs_km":717.64,"r_isco_km":2152.92,"n_theory":5.21892}];
+
+// ================================================================
+// STATE
+// ================================================================
+let ev=null, pitchMode='pitched', audioCtx=null, sourceNode=null;
+let audioBuffer=null, pcmData=null, isPlaying=false, playStart=0;
+let animId=null, waveDrawn=false;
+
+// ================================================================
+// PN PHYSICS
+// ================================================================
+function pnFreq(tau, Mc_kg) {
+  if(tau<=1e-6) return Infinity;
+  return (1/PI)*Math.pow(5/(256*tau),3/8)*Math.pow(CC*CC*CC/(G*Mc_kg),5/8);
+}
+
+function pnAmpEnv(tau, t_window) {
+  // Amplitude envelope ~ tau^(-1/4), normalized
+  if(tau<=0) return 1;
+  return Math.pow(Math.max(tau,1e-5)/t_window,-0.25);
+}
+
+// ================================================================
+// GENERATE AUDIO BUFFER
+// ================================================================
+function generateAudio(event, durSec, rdSec, volume, pitched) {
+  const Mc_kg = event.Mc * MSUN;
+  const Mt_kg = event.Mt * MSUN;
+  const f_isco_true = CC*CC*CC/(6*Math.sqrt(6)*PI*G*Mt_kg);
+  const f_qnm = f_isco_true * 0.95;
+  // Ringdown decay time (quality factor Q ~ 2 for dominant QNM of Kerr BH)
+  const tau_rd = rdSec;
+
+  // Pitch factor
+  const f_target = 800; // Hz
+  const pf = pitched ? (f_target / f_isco_true) : 1.0;
+  const f_isco_audio = f_isco_true * pf;
+  const f_qnm_audio = f_qnm * pf;
+
+  const n_inspiral = Math.round(durSec * SR);
+  const n_ringdown = Math.round(rdSec * SR);
+  const n_total = n_inspiral + n_ringdown;
+
+  const buf = new Float32Array(n_total);
+  const freqTrack = new Float32Array(n_total);
+
+  let phi = 0;
+
+  // Inspiral phase: integrate 2pi * f_gw(tau) * dt
+  for(let i=0; i<n_inspiral; i++) {
+    const t = -durSec + i/SR;       // t=0 is merger
+    const tau = -t;                  // time remaining
+
+    let f_gw_true = pnFreq(tau, Mc_kg);
+    if(f_gw_true > f_isco_true) f_gw_true = f_isco_true;
+
+    const f_audio = f_gw_true * pf;
+    phi += 2*PI*f_audio/SR;
+
+    const env = pnAmpEnv(tau, durSec);
+    buf[i] = env * Math.cos(phi);
+    freqTrack[i] = f_gw_true;
+  }
+
+  // Merge phi smoothly into ringdown
+  // Ringdown: exponentially damped sinusoid at QNM frequency
+  const rdPhaseOffset = phi;
+  for(let i=0; i<n_ringdown; i++) {
+    const rd_t = i/SR;
+    const env = Math.exp(-rd_t/tau_rd);
+    const f_audio = f_qnm_audio;
+    phi += 2*PI*f_audio/SR;
+    buf[n_inspiral + i] = env * Math.cos(phi - rdPhaseOffset + rdPhaseOffset);
+    freqTrack[n_inspiral + i] = f_qnm;
+  }
+
+  // Normalize
+  let peak = 0;
+  for(let i=0;i<n_total;i++) peak=Math.max(peak,Math.abs(buf[i]));
+  if(peak>0) for(let i=0;i<n_total;i++) buf[i] = buf[i]/peak * volume;
+
+  // Apply fade-in (5ms) and fade-out (20ms)
+  const fi=Math.round(0.005*SR), fo=Math.round(0.02*SR);
+  for(let i=0;i<fi;i++) buf[i]*=i/fi;
+  for(let i=0;i<fo;i++) buf[n_total-1-i]*=i/fo;
+
+  return {buf, freqTrack, n_inspiral, f_isco_true, f_isco_audio, pf, n_total};
+}
+
+// ================================================================
+// PLAY AUDIO
+// ================================================================
+function handlePlay() {
+  if(!ev) return;
+  handleStop();
+
+  const dur = parseFloat(document.getElementById('durSlider').value);
+  const vol = parseFloat(document.getElementById('volSlider').value);
+  const rd  = parseFloat(document.getElementById('rdSlider').value);
+  const pitched = pitchMode==='pitched';
+
+  const {buf, freqTrack, n_inspiral, f_isco_true, f_isco_audio, pf, n_total} = generateAudio(ev, dur, rd, vol, pitched);
+
+  pcmData = {buf, freqTrack, n_inspiral, n_total, dur, rd, f_isco_true, f_isco_audio, pf};
+  audioBuffer = pcmData;
+
+  // Web Audio
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)({sampleRate: SR});
+  const abuf = audioCtx.createBuffer(1, n_total, SR);
+  abuf.getChannelData(0).set(buf);
+  sourceNode = audioCtx.createBufferSource();
+  sourceNode.buffer = abuf;
+  const gainNode = audioCtx.createGain();
+  gainNode.gain.value = 1.0;
+  sourceNode.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+
+  playStart = audioCtx.currentTime;
+  sourceNode.start();
+  isPlaying = true;
+
+  sourceNode.onended = () => {
+    isPlaying = false;
+    document.getElementById('playBtn').textContent = '▶ GENERATE & PLAY';
+    document.getElementById('playBtn').classList.remove('active');
+    setPhase('done');
+    document.getElementById('progFill').style.width='100%';
+  };
+
+  document.getElementById('playBtn').textContent = '⏸ PLAYING...';
+  document.getElementById('playBtn').classList.add('active');
+  document.getElementById('dlBtn').disabled = false;
+
+  // Draw waveform & spectrogram immediately
+  drawWaveform(pcmData);
+  drawSpectrogram(pcmData);
+  drawChirpCurve(pcmData);
+
+  // Start animation loop for progress + live indicators
+  cancelAnimationFrame(animId);
+  animLoop();
+}
+
+function handleStop() {
+  if(sourceNode) { try{sourceNode.stop();}catch(e){} sourceNode=null; }
+  if(audioCtx) { try{audioCtx.close();}catch(e){} audioCtx=null; }
+  isPlaying=false;
+  document.getElementById('playBtn').textContent='▶ GENERATE & PLAY';
+  document.getElementById('playBtn').classList.remove('active');
+  cancelAnimationFrame(animId);
+  setPhase('idle');
+}
+
+// ================================================================
+// ANIMATION LOOP (progress + phase indicator)
+// ================================================================
+function animLoop() {
+  if(!isPlaying||!audioCtx||!pcmData) return;
+  const elapsed = audioCtx.currentTime - playStart;
+  const total = pcmData.n_total/SR;
+  const pct = Math.min(1, elapsed/total)*100;
+  document.getElementById('progFill').style.width=pct+'%';
+
+  // Phase
+  if(elapsed < pcmData.dur) setPhase('inspiral');
+  else if(elapsed < pcmData.dur + 0.05) setPhase('merger');
+  else setPhase('ringdown');
+
+  // Highlight current position on waveform
+  drawWaveformPlayhead(elapsed/total);
+
+  animId = requestAnimationFrame(animLoop);
+}
+
+// ================================================================
+// WAVEFORM DRAW
+// ================================================================
+const WC = document.getElementById('waveCanvas');
+const wctx = WC.getContext('2d');
+let playheadPct = 0;
+
+function drawWaveform(pd) {
+  const W=WC.width, H=WC.height;
+  const PM={top:10,right:10,bottom:18,left:44};
+  const pw=W-PM.left-PM.right, ph=H-PM.top-PM.bottom;
+
+  wctx.clearRect(0,0,W,H);
+  wctx.fillStyle='#040810'; wctx.fillRect(0,0,W,H);
+
+  // Zero line
+  wctx.strokeStyle='rgba(255,255,255,0.06)'; wctx.lineWidth=1;
+  wctx.beginPath(); wctx.moveTo(PM.left,PM.top+ph/2); wctx.lineTo(PM.left+pw,PM.top+ph/2); wctx.stroke();
+
+  // Merger line
+  const mxPct = pd.dur/(pd.dur+pd.rd);
+  const mx = PM.left + mxPct*pw;
+  wctx.save(); wctx.setLineDash([3,4]);
+  wctx.strokeStyle='rgba(240,192,64,0.4)'; wctx.lineWidth=1;
+  wctx.beginPath(); wctx.moveTo(mx,PM.top); wctx.lineTo(mx,PM.top+ph); wctx.stroke();
+  wctx.restore();
+  wctx.fillStyle='rgba(240,192,64,0.5)'; wctx.font='8px "Share Tech Mono"'; wctx.textAlign='center';
+  wctx.fillText('MERGER',mx,PM.top+8);
+
+  // Waveform — downsample for display
+  const step = Math.max(1, Math.floor(pd.n_total/pw));
+  wctx.lineWidth=1;
+  let prevPhase=null;
+  wctx.beginPath();
+
+  for(let px=0;px<pw;px++) {
+    const idx = Math.floor(px/pw*pd.n_total);
+    const h = pd.buf[idx];
+    const x = PM.left+px;
+    const y = PM.top+ph/2 - h*(ph/2)*0.9;
+    const phase = idx<pd.n_inspiral?'inspiral':'ringdown';
+    const col = phase==='inspiral'?'rgba(0,200,255,0.85)':'rgba(192,96,255,0.8)';
+    if(phase!==prevPhase){
+      wctx.stroke(); wctx.strokeStyle=col; wctx.beginPath(); wctx.moveTo(x,y);
+      prevPhase=phase;
+    } else { wctx.lineTo(x,y); }
+  }
+  wctx.stroke();
+
+  // Axes
+  wctx.strokeStyle='#1a3040'; wctx.lineWidth=1;
+  wctx.beginPath(); wctx.moveTo(PM.left,PM.top); wctx.lineTo(PM.left,PM.top+ph); wctx.lineTo(PM.left+pw,PM.top+ph); wctx.stroke();
+
+  // Labels
+  wctx.fillStyle='#4a6070'; wctx.font='8px "Share Tech Mono"'; wctx.textAlign='right';
+  wctx.fillText('+h',PM.left-4,PM.top+10); wctx.fillText('-h',PM.left-4,PM.top+ph-2);
+  wctx.textAlign='left'; wctx.fillStyle='rgba(0,200,255,0.5)';
+  wctx.fillText('inspiral',PM.left+4,PM.top+ph-4);
+  wctx.fillStyle='rgba(192,96,255,0.5)';
+  wctx.fillText('ringdown',mx+4,PM.top+ph-4);
+
+  wctx.save(); // Save state for playhead overlay
+}
+
+function drawWaveformPlayhead(pct) {
+  if(!pcmData) return;
+  const W=WC.width, H=WC.height;
+  const PM={top:10,right:10,bottom:18,left:44};
+  const pw=W-PM.left-PM.right, ph=H-PM.top-PM.bottom;
+  // Just redraw waveform + playhead (avoid full redraw cost)
+  const x = PM.left + pct*pw;
+  // Draw playhead on top
+  const imgData = wctx.getImageData(0,0,W,H); // would need to restore...
+  // Instead just draw a line (will accumulate but looks ok)
+  wctx.strokeStyle='rgba(255,255,255,0.3)'; wctx.lineWidth=1;
+  wctx.beginPath(); wctx.moveTo(x,PM.top); wctx.lineTo(x,PM.top+ph); wctx.stroke();
+}
+
+// ================================================================
+// SPECTROGRAM
+// ================================================================
+const SPC = document.getElementById('specCanvas');
+const spctx = SPC.getContext('2d');
+
+function drawSpectrogram(pd) {
+  const W=SPC.width, H=SPC.height;
+  spctx.clearRect(0,0,W,H);
+  spctx.fillStyle='#010306'; spctx.fillRect(0,0,W,H);
+
+  const PM={top:4,right:10,bottom:22,left:44};
+  const pw=W-PM.left-PM.right, ph=H-PM.top-PM.bottom;
+
+  // f range for display
+  const f_max = pd.f_isco_true * 1.2;
+  const f_min = 5;
+
+  // Draw frequency track as colored line with amplitude brightness
+  const step = Math.max(1, Math.floor(pd.n_total/pw));
+  for(let px=0;px<pw;px++) {
+    const idx = Math.floor(px/pw*pd.n_total);
+    const f = pd.freqTrack[idx];
+    const amp = Math.abs(pd.buf[idx]);
+    const fy = PM.top + ph - ((f-f_min)/(f_max-f_min))*ph;
+    if(fy<PM.top||fy>PM.top+ph) continue;
+
+    // Color: inspiral=cyan, merger transition=gold, ringdown=purple
+    const phase_frac = idx/pd.n_inspiral;
+    let r,g,b;
+    if(idx<pd.n_inspiral){
+      const t=Math.min(phase_frac,1);
+      r=Math.round(t*240); g=Math.round(200-t*80); b=255;
+    } else {
+      r=192; g=96; b=255;
+    }
+
+    // Draw vertical smear (3px wide per column, spread in freq by bandwidth)
+    const bw_px = Math.max(1, ph*0.05);
+    const bright = Math.min(1, amp*2+0.3);
+    for(let dy=-bw_px; dy<=bw_px; dy++){
+      const yy=Math.round(fy+dy);
+      if(yy<PM.top||yy>PM.top+ph) continue;
+      const fade=bright*Math.exp(-dy*dy/(bw_px*bw_px)*2);
+      spctx.fillStyle=`rgba(${r},${g},${b},${fade.toFixed(2)})`;
+      spctx.fillRect(PM.left+px,yy,1,1);
+    }
+  }
+
+  // Axes
+  spctx.strokeStyle='#1a3040'; spctx.lineWidth=1;
+  spctx.beginPath(); spctx.moveTo(PM.left,PM.top); spctx.lineTo(PM.left,PM.top+ph);
+  spctx.lineTo(PM.left+pw,PM.top+ph); spctx.stroke();
+
+  spctx.fillStyle='#4a6070'; spctx.font='8px "Share Tech Mono"';
+  spctx.textAlign='right';
+  const fTicks=[10,50,100,200,500,1000];
+  fTicks.forEach(f=>{
+    if(f>f_max) return;
+    const y=PM.top+ph-((f-f_min)/(f_max-f_min))*ph;
+    if(y<PM.top||y>PM.top+ph+2) return;
+    spctx.fillText(f+'Hz',PM.left-3,y+3);
+    spctx.strokeStyle='rgba(10,24,38,0.8)'; spctx.lineWidth=0.5;
+    spctx.beginPath(); spctx.moveTo(PM.left,y); spctx.lineTo(PM.left+pw,y); spctx.stroke();
+  });
+
+  spctx.textAlign='center'; spctx.fillStyle='#4a6070';
+  spctx.fillText('→ time →', PM.left+pw/2, H-4);
+
+  // Note: true frequencies shown
+  spctx.fillStyle='rgba(255,255,255,0.2)'; spctx.textAlign='right'; spctx.font='7px "Share Tech Mono"';
+  spctx.fillText('true GW frequencies', PM.left+pw-4, PM.top+10);
+}
+
+// ================================================================
+// CHIRP CURVE
+// ================================================================
+const CHC = document.getElementById('chirpCanvas');
+const chctx = CHC.getContext('2d');
+
+function drawChirpCurve(pd) {
+  const W=CHC.width, H=CHC.height;
+  const PM={top:8,right:10,bottom:22,left:44};
+  const pw=W-PM.left-PM.right, ph=H-PM.top-PM.bottom;
+
+  chctx.clearRect(0,0,W,H);
+  chctx.fillStyle='#040810'; chctx.fillRect(0,0,W,H);
+
+  const f_max=pd.f_isco_true*1.3, f_min=5;
+  const toX=idx=>PM.left+(idx/pd.n_total)*pw;
+  const toY=f=>PM.top+ph-((Math.min(f,f_max)-f_min)/(f_max-f_min))*ph;
+
+  // Grid
+  [50,100,200,500].forEach(f=>{
+    if(f>f_max) return;
+    const y=toY(f);
+    chctx.strokeStyle='rgba(10,24,38,1)'; chctx.lineWidth=0.5;
+    chctx.beginPath(); chctx.moveTo(PM.left,y); chctx.lineTo(PM.left+pw,y); chctx.stroke();
+  });
+
+  // f_ISCO line
+  const y_isco=toY(pd.f_isco_true);
+  chctx.save(); chctx.setLineDash([3,4]);
+  chctx.strokeStyle='rgba(240,192,64,0.35)'; chctx.lineWidth=1;
+  chctx.beginPath(); chctx.moveTo(PM.left,y_isco); chctx.lineTo(PM.left+pw,y_isco); chctx.stroke();
+  chctx.restore();
+  chctx.fillStyle='rgba(240,192,64,0.5)'; chctx.font='7px "Share Tech Mono"'; chctx.textAlign='right';
+  chctx.fillText('f_ISCO='+pd.f_isco_true.toFixed(0)+'Hz',PM.left+pw-2,y_isco-3);
+
+  // Chirp curve
+  chctx.lineWidth=1.5;
+  let prevP=null;
+  for(let px=0;px<pw;px++){
+    const idx=Math.floor(px/pw*pd.n_total);
+    const f=pd.freqTrack[idx];
+    const x=PM.left+px, y=toY(f);
+    const col=idx<pd.n_inspiral?'rgba(0,200,255,0.85)':'rgba(192,96,255,0.8)';
+    if(!prevP){chctx.beginPath();chctx.strokeStyle=col;chctx.moveTo(x,y);}
+    else{
+      if(col!==prevP.col){chctx.stroke();chctx.strokeStyle=col;chctx.beginPath();chctx.moveTo(x,y);}
+      else chctx.lineTo(x,y);
+    }
+    prevP={x,y,col};
+  }
+  chctx.stroke();
+
+  // Axes
+  chctx.strokeStyle='#1a3040'; chctx.lineWidth=1;
+  chctx.beginPath(); chctx.moveTo(PM.left,PM.top); chctx.lineTo(PM.left,PM.top+ph); chctx.lineTo(PM.left+pw,PM.top+ph); chctx.stroke();
+
+  chctx.fillStyle='#4a6070'; chctx.font='8px "Share Tech Mono"'; chctx.textAlign='right';
+  [10,50,100,200,500].forEach(f=>{
+    if(f<f_max) chctx.fillText(f,PM.left-3,toY(f)+3);
+  });
+  chctx.textAlign='center';
+  chctx.fillText('f_GW (Hz) — true frequency', PM.left+pw/2, H-4);
+}
+
+// ================================================================
+// WAV EXPORT
+// ================================================================
+function downloadWAV() {
+  if(!pcmData) return;
+  const {buf, n_total} = pcmData;
+  const numChannels=1, bitsPerSample=16;
+  const byteRate=SR*numChannels*bitsPerSample/8;
+  const blockAlign=numChannels*bitsPerSample/8;
+  const dataSize=n_total*blockAlign;
+  const fileSize=44+dataSize;
+
+  const ab=new ArrayBuffer(fileSize);
+  const view=new DataView(ab);
+
+  const writeStr=(o,s)=>{for(let i=0;i<s.length;i++) view.setUint8(o+i,s.charCodeAt(i));};
+  writeStr(0,'RIFF');
+  view.setUint32(4,fileSize-8,true);
+  writeStr(8,'WAVE');
+  writeStr(12,'fmt ');
+  view.setUint32(16,16,true);
+  view.setUint16(20,1,true); // PCM
+  view.setUint16(22,numChannels,true);
+  view.setUint32(24,SR,true);
+  view.setUint32(28,byteRate,true);
+  view.setUint16(32,blockAlign,true);
+  view.setUint16(34,bitsPerSample,true);
+  writeStr(36,'data');
+  view.setUint32(40,dataSize,true);
+
+  // Convert Float32 to Int16
+  for(let i=0;i<n_total;i++){
+    const s=Math.max(-1,Math.min(1,buf[i]));
+    view.setInt16(44+i*2, Math.round(s*32767), true);
+  }
+
+  const blob=new Blob([ab],{type:'audio/wav'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  const evName=(ev?ev.id:'gw_chirp').replace(/[^a-zA-Z0-9_]/g,'_');
+  a.download=`seraphim_${evName}_chirp.wav`;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+}
+
+// ================================================================
+// PHASE INDICATOR
+// ================================================================
+function setPhase(p) {
+  ['ins','mrg','rng'].forEach(id=>{
+    document.getElementById('ph_'+id).className='ph idle';
+  });
+  if(p==='inspiral') document.getElementById('ph_ins').className='ph active-ins';
+  else if(p==='merger') document.getElementById('ph_mrg').className='ph active-mrg';
+  else if(p==='ringdown') document.getElementById('ph_rng').className='ph active-rng';
+}
+
+// ================================================================
+// PITCH MODE
+// ================================================================
+function setPitchMode(mode) {
+  pitchMode=mode;
+  document.getElementById('tPitch').classList.toggle('active',mode==='pitched');
+  document.getElementById('tTrue').classList.toggle('active',mode==='true');
+  const note=document.getElementById('pitchNote');
+  if(mode==='pitched'){
+    note.textContent='Pitch-shifted so f_ISCO → 800 Hz. Preserves chirp shape & ringdown character.';
+    note.style.color='var(--sub)';
+  } else {
+    note.innerHTML='True GW frequencies.<br><span style="color:var(--orange)">Note: most events below 150 Hz — may be inaudible on small speakers.</span>';
+  }
+  if(ev) updateSidebar(ev);
+}
+
+// ================================================================
+// EVENT SELECTOR
+// ================================================================
+function updateSidebar(e) {
+  const f_isco=e.f_isco;
+  const pf = pitchMode==='pitched' ? (800/f_isco) : 1.0;
+  document.getElementById('s_m1').textContent=e.m1.toFixed(2)+' M☉';
+  document.getElementById('s_m2').textContent=e.m2.toFixed(2)+' M☉';
+  document.getElementById('s_Mc').textContent=e.Mc.toFixed(3)+' M☉';
+  document.getElementById('s_chi').textContent=(e.chi>=0?'+':'')+e.chi.toFixed(4);
+  document.getElementById('s_fisco').textContent=f_isco.toFixed(0)+' Hz';
+  document.getElementById('s_faudio').textContent=(f_isco*pf).toFixed(0)+' Hz';
+  document.getElementById('s_pf').textContent=pf.toFixed(1)+'×';
+  document.getElementById('s_n').textContent=e.n.toFixed(4);
+  const delta=e.n-e.n_theory;
+  const dEl=document.getElementById('s_ndelta');
+  dEl.textContent='δn = '+(delta>=0?'+':'')+delta.toFixed(4)+' | theory='+e.n_theory.toFixed(4);
+  dEl.style.color=Math.abs(delta)<0.15?'var(--green)':'var(--orange)';
+}
+
+function populateSelector() {
+  const sel=document.getElementById('eventSelect');
+  const sorted=[...EVENTS].sort((a,b)=>a.id.localeCompare(b.id));
+  sorted.forEach(e=>{
+    const opt=document.createElement('option');
+    opt.value=e.id;
+    opt.textContent=`${e.id}  [${e.m1.toFixed(1)}+${e.m2.toFixed(1)} M☉  f_ISCO=${e.f_isco.toFixed(0)}Hz  n=${e.n.toFixed(3)}]`;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change',()=>{
+    ev=EVENTS.find(x=>x.id===sel.value);
+    if(ev){handleStop();updateSidebar(ev);}
+  });
+  const def=EVENTS.find(e=>e.id.includes('GW150914'))||EVENTS[10];
+  sel.value=def.id; ev=def; updateSidebar(def);
+}
+
+// ================================================================
+// SLIDER LISTENERS
+// ================================================================
+document.getElementById('durSlider').addEventListener('input',e=>{
+  document.getElementById('durVal').textContent=parseFloat(e.target.value).toFixed(1)+' s';
+});
+document.getElementById('volSlider').addEventListener('input',e=>{
+  document.getElementById('volVal').textContent=parseFloat(e.target.value).toFixed(2);
+});
+document.getElementById('rdSlider').addEventListener('input',e=>{
+  document.getElementById('rdVal').textContent=parseFloat(e.target.value).toFixed(2)+' s';
+});
+
+// ================================================================
+// RESIZE
+// ================================================================
+function resizeAll(){
+  [WC,SPC,CHC].forEach(c=>{
+    c.width=c.parentElement.clientWidth-26;
+  });
+  if(pcmData){drawWaveform(pcmData);drawSpectrogram(pcmData);drawChirpCurve(pcmData);}
+}
+window.addEventListener('resize',resizeAll);
+populateSelector();
+resizeAll();
+</script>
+</body>
+</html>
